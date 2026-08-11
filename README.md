@@ -1,6 +1,6 @@
-# TownyDiscordChat 3.0.0
+# TownyDiscordChat 3.1.0
 
-Plugin Paper 1.21.11 che sincronizza Towny e DiscordSRV. Richiede Java 21, Towny 0.103.0.0+ e DiscordSRV 1.30.4+.
+Plugin Paper/Purpur 1.21+ che sincronizza Towny e DiscordSRV. Richiede Java 21, Towny 0.103.0.0+ e DiscordSRV 1.30.4+.
 
 ## Funzioni
 
@@ -57,7 +57,7 @@ town:
 mvn clean package
 ```
 
-L'artefatto viene generato in `target/TownyDiscordChat-3.0.0-1.21.11.jar`.
+L'artefatto viene generato in `target/TownyDiscordChat-3.1.0-1.21+.jar`.
 
 ## Autori e collaboratori
 
@@ -67,7 +67,7 @@ L'artefatto viene generato in `target/TownyDiscordChat-3.0.0-1.21.11.jar`.
 
 ## Ispirazione
 
-Il progetto nasce come evoluzione e re-implementazione ispirata a [TownyDiscordChat su SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). Il codice e le funzionalita presenti in questa repository sono stati adattati ed estesi per Paper/Purpur 1.21.11.
+Il progetto nasce come evoluzione e re-implementazione ispirata a [TownyDiscordChat su SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). Il codice e le funzionalita presenti in questa repository sono stati adattati ed estesi per Paper/Purpur 1.21 e successive versioni 1.21.x.
 
 ## Dipendenze
 
@@ -86,9 +86,9 @@ Soft-dependencies opzionali:
 
 ---
 
-# TownyDiscordChat 3.0.0 — English
+# TownyDiscordChat 3.1.0 — English
 
-TownyDiscordChat bridges Towny and DiscordSRV on Paper/Purpur 1.21.11. It requires Java 21 and creates town/nation roles and channels, provides a town-only two-way chat bridge, synchronizes linked accounts, and publishes configurable Towny notifications.
+TownyDiscordChat bridges Towny and DiscordSRV on Paper/Purpur 1.21 and later 1.21.x releases. It requires Java 21 and creates town/nation roles and channels, provides a town-only two-way chat bridge, synchronizes linked accounts, and publishes configurable Towny notifications.
 
 ## Requirements
 
@@ -116,7 +116,7 @@ Optional soft-dependencies:
 
 ## Inspiration
 
-This project was inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). This repository contains an adapted and extended implementation targeting Paper/Purpur 1.21.11.
+This project was inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). This repository contains an adapted and extended implementation targeting Paper/Purpur 1.21 and later 1.21.x releases.
 
 ## Build
 
@@ -124,4 +124,4 @@ This project was inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc
 mvn clean package
 ```
 
-The generated artifact is `target/TownyDiscordChat-3.0.0-1.21.11.jar`.
+The generated artifact is `target/TownyDiscordChat-3.1.0-1.21+.jar`.

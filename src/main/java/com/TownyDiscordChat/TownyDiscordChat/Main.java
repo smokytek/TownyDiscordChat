@@ -43,7 +43,7 @@ public final class Main extends JavaPlugin {
             manager.synchroniseAllResources();
             manager.synchroniseAllLinkedAccounts();
         });
-        getLogger().info("TownyDiscordChat " + getDescription().getVersion() + " enabled for Paper 1.21.11.");
+        getLogger().info("TownyDiscordChat " + getDescription().getVersion() + " enabled for Paper 1.21+.");
     }
 
     @Override
