@@ -1,0 +1,159 @@
+[CENTER][SIZE=6][B]TownyDiscordChat 3.2.0[/B][/SIZE]
+[SIZE=4]A complete Towny Advanced ↔ DiscordSRV bridge for Paper/Purpur[/SIZE]
+
+[URL='https://github.com/smokytek/TownyDiscordChat']Source code on GitHub[/URL] · [URL='https://www.spigotmc.org/resources/townydiscordchat.91026/']Original inspiration[/URL][/CENTER]
+
+[B]TownyDiscordChat[/B] connects Towny Advanced towns and nations to DiscordSRV. It creates and synchronizes Discord roles and channels, provides a town-only two-way chat bridge, publishes rich Towny embeds, and keeps linked accounts aligned with their current town.
+
+[SIZE=5][B]Highlights[/B][/SIZE]
+[LIST]
+[*][B]Town and nation resources:[/B] automatically create roles, text channels and voice channels.
+[*][B]Town-only chat bridge:[/B] Minecraft town chat → the matching Discord channel and Discord → online residents.
+[*][B]Security checks:[/B] linked-account validation, wrong-town protection and Discord administrator overrides.
+[*][B]Rich bank embeds:[/B] deposits, withdrawals, taxes, balances, actors and reasons with configurable fields.
+[*][B]Town notifications:[/B] residents joining/leaving, mayor changes, rank changes, jail, outlaw and tax events.
+[*][B]Daily NewDay summary:[/B] town status, economy and buttons for Taxes, Residents and Outposts.
+[*][B]Outpost browser:[/B] paginated outpost names, PlotGroup names, worlds and coordinates.
+[*][B]Global fall reports:[/B] configurable DiscordSRV embeds for bankrupt, ruined or fallen towns, with ten story variants.
+[*][B]InteractiveChat support:[/B] item previews through InteractiveChat DiscordSRV Addon, with a fallback item embed.
+[*][B]Dynmap integration:[/B] `/town map` creates an overhead town map from Dynmap tiles.
+[*][B]PlaceholderAPI:[/B] external placeholders are available in bridge formats, titles, descriptions, footers and fields.
+[*][B]No staff channels:[/B] town notifications are sent to the normal town channel.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Paper or Purpur [B]1.21+[/B].
+[*]Paper/Purpur [B]26.*[/B] is supported; Paper 26.* requires [B]Java 25[/B].
+[*]Java 21+ for 1.21.x servers.
+[*][B]Towny Advanced[/B] — required.
+[*][B]DiscordSRV[/B] — required, with a configured Main Guild.
+[/LIST]
+
+[B]Required plugin dependencies[/B]
+[LIST]
+[*][URL='https://github.com/TownyAdvanced/Towny']Towny[/URL]
+[*][URL='https://github.com/DiscordSRV/DiscordSRV']DiscordSRV[/URL]
+[/LIST]
+
+[B]Optional soft-dependencies[/B]
+[LIST]
+[*][URL='https://github.com/PlaceholderAPI/PlaceholderAPI']PlaceholderAPI[/URL]
+[*][URL='https://github.com/webbukkit/dynmap']Dynmap[/URL]
+[*][URL='https://github.com/LOOHP/InteractiveChat']InteractiveChat[/URL]
+[*][URL='https://modrinth.com/plugin/interactivechat-discordsrv-addon']InteractiveChat DiscordSRV Addon[/URL]
+[*]TownyChat
+[/LIST]
+
+[SIZE=5][B]Installation[/B][/SIZE]
+[LIST=1]
+[*]Install Towny Advanced and DiscordSRV and configure DiscordSRV's Main Guild.
+[*]Download `TownyDiscordChat-3.2.0.jar` and place it in `/plugins`.
+[*]Give the Discord bot Manage Roles, Manage Channels, Manage Channel Permissions, View Channels, Send Messages, Embed Links and Read Message History.
+[*]Place the bot role above the TownyDiscordChat roles.
+[*]Enable Discord's Message Content Intent for the bot.
+[*]Start the server once and edit `plugins/TownyDiscordChat/config.yml`.
+[*]Use `/tdc sync` from console or an administrator to create and repair resources.
+[/LIST]
+
+[SIZE=5][B]Important configuration[/B][/SIZE]
+[CODE=yaml]
+# TownyDiscordChat/config.yml
+bridge:
+  Enabled: true
+  MinecraftToDiscord: true
+  DiscordToMinecraft: true
+  TownChatOnly: true
+  RequireLinkedAccount: true
+  RequireCurrentTown: true
+  MinecraftFormat: "**[MC] %player%:** %message%"
+  DiscordFormat: "&8[&2TDC&8] &c%titolo% &8» &7%usernameds% &8» &f%message%"
+
+townychat:
+  Enabled: true
+  ChannelPlaceholder: "%townychat_channel_name%"
+  TownChannelNames: ["town"]
+  LocalNoNearbyPlayersWarning:
+    Enabled: true
+    ChannelNames: ["local"]
+    Radius: 100
+    Message: "&cNobody nearby can read your message. Try &f/g&c."
+    Title: "&cLocal chat has no listeners"
+    Subtitle: "&7Nobody is close enough to read you"
+    SoundEnabled: true
+    Sound: "BLOCK_NOTE_BLOCK_BELL"
+    SoundVolume: 1.0
+    SoundPitch: 1.0
+
+messages:
+  DailySummaryButtons:
+    Enabled: true
+    TaxesLabel: "Taxes"
+    ResidentsLabel: "Residents"
+    OutpostsLabel: "Outposts"
+
+  TownEvents:
+    rank-add:
+      Enabled: true
+      Format: "🏅 **Rank:** %resident% received **%rank%** in the town (by %actor%)."
+    rank-remove:
+      Enabled: true
+      Format: "🏅 **Rank:** **%rank%** was removed from %resident% (by %actor%)."
+    taxes:
+      Enabled: true
+      Format: "💰 **Taxes:** the town tax was set to **%tax%** (by %actor%)."
+
+  GlobalTownFallEmbed:
+    Enabled: true
+[/CODE]
+
+[SIZE=5][B]Minecraft commands[/B][/SIZE]
+[LIST]
+[*]`/tdc sync` — synchronize all Towny roles, channels and linked accounts.
+[*]`/tdc check role` — synchronize your own Towny roles.
+[*]`/tdc check role alllinked` — synchronize all linked accounts.
+[*]`/tdc check role createalltownsandnations` — create or repair all Towny resources.
+[*]`/tdc check textchannel alltownsandnations` — verify town/nation text channels.
+[*]`/tdc check voicechannel alltownsandnations` — verify voice channels.
+[*]`/tdc channels delete <town|all>` — delete town channels while keeping roles.
+[*]`/tdc channels restore <town|all>` — re-enable and recreate intentionally deleted channels.
+[*]`/t discord <newday|chat|jail> <enable|disable>` — configure a town feature.
+[/LIST]
+
+[SIZE=5][B]Discord slash commands[/B][/SIZE]
+[LIST]
+[*]`/town info` — private summary of your linked town.
+[*]`/town sync` — synchronize your Discord roles.
+[*]`/town map [town]` — show a Dynmap overhead image; other towns require Discord Administrator or a configured admin role.
+[*]`/town notice message:<text>` — send a notice to the town channel as mayor/deputy.
+[*]`/town resync` — synchronize all resources; Discord Administrator only.
+[/LIST]
+
+[SIZE=5][B]Permissions[/B][/SIZE]
+[CODE]
+TownyDiscordChat.Admin
+TownyDiscordChat.Player
+TownyDiscordChat.Sync
+TownyDiscordChat.Check.Role
+TownyDiscordChat.Check.Role.AllLinked
+TownyDiscordChat.Check.Role.CreateAllTownsAndNations
+TownyDiscordChat.Check.TextChannel.AllTownsAndNations
+TownyDiscordChat.Check.VoiceChannel.AllTownsAndNations
+[/CODE]
+
+[SIZE=5][B]PlaceholderAPI and InteractiveChat[/B][/SIZE]
+Install PlaceholderAPI expansions required by your server and enable `placeholderapi.Enabled`. Native placeholders such as `%town%`, `%mayor%`, `%message%`, `%actor%`, `%resident%`, `%rank%`, `%tax%` and `%balance%` can be combined with external PlaceholderAPI placeholders.
+
+For item previews, install InteractiveChat and InteractiveChat DiscordSRV Addon. Enable `interactivechat.UseDiscordSRVAddon`. Without the addon, TownyDiscordChat can send a fallback item embed for supported hover components.
+
+[SIZE=5][B]Compatibility notes[/B][/SIZE]
+The plugin uses public Bukkit/Paper APIs only and does not use NMS or obfuscated server classes. `api-version: '1.21'` is intentionally kept as the minimum API so the same JAR can load on newer Paper API generations. Paper 26.* changed its versioning scheme and requires Java 25; Towny, DiscordSRV and optional integrations must also support the selected server version.
+
+[SIZE=5][B]Support and inspiration[/B][/SIZE]
+Report bugs and feature requests through the [URL='https://github.com/smokytek/TownyDiscordChat/issues']GitHub issue tracker[/URL].
+
+The project was inspired by [URL='https://www.spigotmc.org/resources/townydiscordchat.91026/']TownyDiscordChat on SpigotMC[/URL] and has been extended for modern Paper/Purpur, DiscordSRV and Towny versions.
+
+[B]Authors and contributors:[/B] thejames10, Hugo5000, Smokytek
+
+[CENTER][SIZE=3]If this resource helps your server, please leave a rating and feedback on SpigotMC.[/SIZE][/CENTER]
