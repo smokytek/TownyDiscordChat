@@ -57,7 +57,7 @@
 [/LIST]
 
 [SIZE=5][B]Important configuration[/B][/SIZE]
-[CODE=yaml]
+[CODE]
 # TownyDiscordChat/config.yml
 bridge:
   Enabled: true
