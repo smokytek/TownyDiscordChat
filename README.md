@@ -1,4 +1,5 @@
 # TownyDiscordChat 3.0.0
+(English version below)
 
 Plugin Paper 1.21.11 che sincronizza Towny e DiscordSRV. Richiede Java 21, Towny 0.103.0.0+ e DiscordSRV 1.30.4+.
 
