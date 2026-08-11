@@ -1,0 +1,470 @@
+nation:
+  CreateTextChannelForRole: true
+  CreateVoiceChannelForRole: true
+
+  UseCategoryForText: true
+  UseCategoryForVoice: true
+
+  TextCategoryId: 0
+  VoiceCategoryId: 0
+
+  CreateRoleIfNoneExists: true
+  RoleCreateColorCode: "0xc9c012"
+town:
+  CreateTextChannelForRole: true
+  CreateVoiceChannelForRole: true
+  
+  UseCategoryForText: true
+  UseCategoryForVoice: true
+
+  TextCategoryId: 0
+  VoiceCategoryId: 0
+
+  CreateRoleIfNoneExists: true
+  RoleCreateColorCode: "0x006798"
+bridge:
+  Enabled: true
+  MinecraftToDiscord: true
+  DiscordToMinecraft: true
+  # Inoltra verso Discord solo i messaggi il cui pubblico è la città Towny,
+  # non la chat globale, nazione o altri canali.
+  TownChatOnly: true
+  # Discord users must be linked and belong to the town whose channel they are using.
+  RequireLinkedAccount: true
+  RequireCurrentTown: true
+  # Rimuove emoji, glifi privati e marcatori Unicode di Discord che il font
+  # Minecraft visualizza come quadratini o simboli RLM/LRM.
+  RemoveUnsupportedDiscordEmoji: true
+  MinecraftFormat: "**[MC] %player%:** %message%"
+  # %titolo% = nome della town, %usernameds% = nome Discord, %message% = messaggio.
+  DiscordFormat: "&8[&2TDC&8] &c%titolo% &8» &7%usernameds% &8» &f%message%"
+
+# Preferenze modificabili dal sindaco/vice con:
+# /town discord newday|chat|jail enable|disable
+townFeatures:
+  Defaults:
+    NewDay: true
+    Chat: true
+    Jail: true
+  # Le preferenze delle singole città vengono salvate automaticamente qui.
+  Towns: {}
+
+# TownyChat is resolved without hooks. The official PlaceholderAPI expansion
+# uses %townychat_channel_name%; command aliases provide an immediate fallback.
+townychat:
+  Enabled: true
+  ChannelPlaceholder: "%townychat_channel_name%"
+  TownChannelNames: ["town"]
+  CommandListener:
+    Enabled: true
+    TownCommands: ["tc"]
+    LocalCommands: ["l", "lc"]
+    OtherCommands: ["g", "nc", "a", "admin", "m", "mod"]
+  LocalNoNearbyPlayersWarning:
+    Enabled: true
+    ChannelNames: ["local"]
+    Radius: 100
+    Message: "&cNessuno può leggere il tuo messaggio ora, prova a scrivere nel canale globale con &f/g&c."
+
+    Title: "&cChat locale senza destinatari"
+    Subtitle: "&7Nessun giocatore e abbastanza vicino per leggerti"
+    TitleFadeIn: 10
+    TitleStay: 50
+    TitleFadeOut: 20
+    SoundEnabled: true
+    Sound: "BLOCK_NOTE_BLOCK_BELL"
+    SoundVolume: 1.0
+    SoundPitch: 1.0
+
+discord:
+  SlashCommands:
+    Enabled: true
+  TownButtons:
+    # I membri con almeno uno di questi ID ruolo possono usare i pulsanti
+    # Tasse e Residenti in qualunque canale cittadino, senza controllo town.
+    AdminRoleIds: []
+    # Autorizza anche chi possiede il permesso Discord Administrator.
+    AllowDiscordAdministrators: true
+
+# Optional Dynmap integration used by /town map [citta]. Dynmap renders maps as
+# tiles, so this section describes the public/internal tile endpoint to combine.
+# Set Enabled false only when Dynmap is not installed.
+dynmap:
+  Enabled: true
+  WebUrl: "http://127.0.0.1:8123"
+  MapPrefix: "flat"
+  TileSize: 128
+  TilesPerSide: 3
+  Zoom: 0
+  RequestTimeoutSeconds: 5
+  # Default Dynmap HD flat-map tile pattern. Tokens: %web_url%, %world%,
+  # %map_prefix%, %chunk_x%, %chunk_y%, %zoom_prefix%, %map_x%, %map_y%.
+  TileUrlTemplate: "%web_url%/tiles/%world%/%map_prefix%/%chunk_x%_%chunk_y%/%zoom_prefix%%map_x%_%map_y%.png"
+  # Transform the Towny spawn coordinates into the Dynmap map coordinates.
+  # These defaults suit non-rotated flat maps; adjust them for rotated projections.
+  MapX:
+    WorldXMultiplier: 1.0
+    WorldZMultiplier: 0.0
+    Offset: 0.0
+  MapY:
+    WorldXMultiplier: 0.0
+    WorldZMultiplier: 1.0
+    Offset: 0.0
+
+placeholderapi:
+  # External PlaceholderAPI values can be used in configurable text.
+  Enabled: true
+
+# Recognizes the item hover components created by InteractiveChat and sends a
+# compact item embed to Discord. InteractiveChat itself remains optional.
+interactivechat:
+  Enabled: true
+  # Passa la chat cittadina nel flusso ufficiale DiscordSRV: necessario per
+  # far renderizzare [item], [inv] e gli altri placeholder dall'addon.
+  # Richiede il plugin InteractiveChatDiscordSrvAddon.
+  UseDiscordSRVAddon: true
+  MaxItemsPerMessage: 3
+  ItemEmbed:
+    Color: "#9B59B6"
+    Title: "🧰 Oggetto mostrato da %player%"
+    Description: "%display_name%"
+    Timestamp: false
+    Footer:
+      Text: "TownyDiscordChat · InteractiveChat"
+      IconUrl: ""
+    Fields:
+      Material:
+        Name: "Materiale"
+        Value: "`%item%`"
+        Inline: true
+      Amount:
+        Name: "Quantità"
+        Value: "`%amount%`"
+        Inline: true
+
+channels:
+  # Town names whose Discord channels were intentionally deleted by an administrator.
+  DisabledTowns: []
+
+messages:
+  TimeZone: "UTC"
+  DateFormat: "dd/MM/yyyy - hh:mm a"
+  DiscordLogTextChannelId: 0
+
+  Prefix: "&8[&2TDC Bot&8]"
+
+  # Inviato nel nuovo canale Discord quando Towny crea una città.
+  # %towny_message% usa direttamente la traduzione msg_new_town di Towny.
+  TownCreated:
+    Enabled: true
+    Format: "🏙️ **Fondazione:** %towny_message%"
+
+  # Bollettino nel canale globale principale di DiscordSRV quando, al NewDay,
+  # una citta va in bancarotta, entra in rovina o viene definitivamente rimossa.
+  # I cittadini NPC di Towny non vengono inclusi nei nomi o nei conteggi.
+  GlobalTownFallEmbed:
+    Enabled: true
+    Color: "#8B1E1E"
+    Title: "Rovine di %town% - %status%"
+    Description: "%story%"
+    Timestamp: true
+    AmountFormat: "%.2f"
+    CauseLabels:
+      bankrupt: "Bancarotta"
+      ruined: "Rovina"
+      fallen: "Caduta"
+    Footer:
+      Text: "Cronache del NewDay - TownyDiscordChat"
+      IconUrl: ""
+    Author:
+      Name: ""
+      Url: ""
+      IconUrl: ""
+    ThumbnailUrl: ""
+    ImageUrl: ""
+    Fields:
+      Mayor:
+        Name: "Ultimo sindaco"
+        Value: "**%mayor%**"
+        Inline: true
+      Nation:
+        Name: "Nazione"
+        Value: "%nation%"
+        Inline: true
+      Residents:
+        Name: "Cittadini reali"
+        Value: "`%residents%`"
+        Inline: true
+      Citizens:
+        Name: "Nomi rimasti nelle cronache"
+        Value: "%citizens%"
+        Inline: false
+      Economy:
+        Name: "Ultimo bilancio"
+        Value: "`%balance%` - valore stimato `%town_value%`"
+        Inline: false
+      Wealth:
+        Name: "Ricchezza dei residenti"
+        Value: "Totale `%resident_wealth%` - media `%average_wealth%`"
+        Inline: false
+      Territory:
+        Name: "Territorio e costi"
+        Value: "`%plots%` plot - tasse `%tax%` - mantenimento `%upkeep%`"
+        Inline: false
+    Variants:
+      - "Le campane di **%town%** hanno suonato per l'ultima volta. Il sindaco **%mayor%** lascia alle cronache una citta di **%residents%** cittadini e **%plots%** plot, mentre **%citizen_one%** e gli altri osservano il vessillo scendere."
+      - "All'alba del NewDay, i registri hanno pronunciato il loro verdetto: **%town%** e entrata in **%status%**. Sotto la guida di **%mayor%**, il bilancio e arrivato a `%balance%` contro un mantenimento di `%upkeep%`."
+      - "Dove ieri sorgeva **%town%**, oggi restano strade silenziose e conti irrisolti. **%mayor%**, **%citizen_one%** e **%citizen_two%** consegnano alla storia un patrimonio stimato in `%town_value%`."
+      - "Il tesoro non ha retto un altro NewDay: **%town%** affronta la **%status%**. I suoi **%residents%** cittadini possedevano insieme `%resident_wealth%`, ma la banca cittadina si e fermata a `%balance%`."
+      - "Una pagina si chiude per **%town%**. Dalla nazione **%nation%** ai nomi di **%citizens%**, tutto cio che resta e il ricordo di **%plots%** plot e delle decisioni del sindaco **%mayor%**."
+      - "Il sole e sorto, ma non sullo stesso vessillo: **%town%** e caduta in **%status%**. Il costo quotidiano di `%upkeep%` ha avuto l'ultima parola su una citta valutata `%town_value%`."
+      - "I mercanti hanno chiuso i registri e le porte di **%town%**. Con un saldo di `%balance%` e una ricchezza media di `%average_wealth%` per residente, il NewDay ha segnato la fine di un'epoca."
+      - "Nessuna guerra, soltanto il peso dei numeri: **%town%** non ha superato il NewDay. **%mayor%** lascia **%residents%** cittadini, fra cui **%citizen_one%**, davanti a un futuro senza mura cittadine."
+      - "Le mappe di Towny cambiano ancora: **%town%**, un tempo forte di **%plots%** plot e parte di **%nation%**, e ora ricordata per la sua **%status%**. I suoi cittadini erano: %citizens%."
+      - "Il consiglio di **%town%** non si riunira oggi. Tasse a `%tax%`, mantenimento a `%upkeep%` e casse a `%balance%` hanno scritto l'ultimo capitolo del mandato di **%mayor%**."
+
+  TownEvents:
+    rank-add:
+      Enabled: true
+      Format: "Rango: %resident% ha ottenuto %rank% nella citta (da %actor%)."
+    rank-remove:
+      Enabled: true
+      Format: "Rango: %rank% e stato rimosso da %resident% (da %actor%)."
+    taxes:
+      Enabled: true
+      Format: "Tasse: la tassa della citta e stata impostata a %tax% (da %actor%)."
+
+  BankEmbed:
+    Enabled: true
+    Color: "#F1C40F"
+    Title: "🏦 Movimento banca — %town%"
+    Description: "Operazione registrata da Towny"
+    Timestamp: true
+    Footer:
+      Text: "TownyDiscordChat"
+      IconUrl: ""
+    Author:
+      Name: ""
+      Url: ""
+      IconUrl: ""
+    ThumbnailUrl: ""
+    ImageUrl: ""
+    AmountFormat: "%.2f"
+    Buttons:
+      Enabled: true
+      TaxesLabel: "💰 Tasse"
+      ResidentsLabel: "👥 Residenti"
+    Fields:
+      Type:
+        Name: "Operazione"
+        Value: "`%type%`"
+        Inline: true
+      Amount:
+        Name: "Importo"
+        Value: "`%amount%`"
+        Inline: true
+      Balance:
+        Name: "Saldo"
+        Value: "`%balance%`"
+        Inline: true
+      Actor:
+        Name: "Eseguita da"
+        Value: "%actor%"
+        Inline: false
+      Reason:
+        Name: "Motivo"
+        Value: "%reason%"
+        Inline: false
+
+  # Inviato nel canale principale della città ad ogni NewDay di Towny.
+  DailySummaryEmbed:
+    Enabled: true
+    Color: "#3498DB"
+    Title: "📊 Riepilogo giornaliero — %town%"
+    Description: "Situazione aggiornata della città"
+    Timestamp: true
+    Footer:
+      Text: "TownyDiscordChat"
+      IconUrl: ""
+    Author:
+      Name: ""
+      Url: ""
+      IconUrl: ""
+    ThumbnailUrl: ""
+    ImageUrl: ""
+    AmountFormat: "%.2f"
+    Fields:
+      Mayor:
+        Name: "Sindaco"
+        Value: "%mayor%"
+        Inline: true
+      Nation:
+        Name: "Nazione"
+        Value: "%nation%"
+        Inline: true
+      Residents:
+        Name: "Residenti"
+        Value: "%residents%"
+        Inline: true
+      Balance:
+        Name: "Saldo"
+        Value: "`%balance%`"
+        Inline: true
+      Tax:
+        Name: "Tasse"
+        Value: "`%tax% %tax_mode%`"
+        Inline: true
+      Spawn:
+        Name: "Spawn città"
+        Value: "`%spawn_world%: %spawn_x%, %spawn_y%, %spawn_z%`"
+        Inline: false
+
+  # Pulsanti mostrati sotto il riepilogo giornaliero.
+  OutpostsEmbed:
+    Color: "#9B59B6"
+    Title: "Avamposti - %town%"
+    Description: "%entries%"
+    Timestamp: false
+    Footer:
+      Text: "Pagina %page%/%pages% - %outposts% avamposti"
+      IconUrl: ""
+    PageSize: 10
+    EntryFormat: "- **%outpost%** - gruppo: **%group%** - `%world% %x%, %z%`"
+    EmptyText: "Nessun avamposto registrato."
+    PreviousLabel: "Precedente"
+    NextLabel: "Successiva"
+
+  # Risposta privata mostrata premendo il pulsante Tasse del riepilogo NewDay.
+  # Il pulsante Avamposti elenca nome, plot group e coordinate.
+  DailySummaryButtons:
+    Enabled: true
+    TaxesLabel: "Tasse"
+    ResidentsLabel: "Residenti"
+    OutpostsLabel: "Avamposti"
+
+  # Risposta privata mostrata premendo il pulsante Tasse del riepilogo NewDay.
+  # Placeholder: %town%, %balance%, %upkeep%, %resident_tax%,
+  # %resident_tax_mode%, %plot_tax%, %commercial_tax%, %embassy_tax%,
+  # %nation%, %nation_tax%.
+  TaxDetailsEmbed:
+    Color: "#F1C40F"
+    Title: "💰 Tasse e mantenimento — %town%"
+    Description: "Situazione economica giornaliera della città."
+    Timestamp: true
+    AmountFormat: "%.2f"
+    Footer:
+      Text: "Informazioni visibili solo a te"
+      IconUrl: ""
+    Fields:
+      Balance:
+        Name: "Bilancio"
+        Value: "`%balance%`"
+        Inline: true
+      Upkeep:
+        Name: "Mantenimento giornaliero"
+        Value: "`%upkeep%`"
+        Inline: true
+      ResidentTax:
+        Name: "Tassa residenti"
+        Value: "`%resident_tax%` (%resident_tax_mode%)"
+        Inline: true
+      PlotTax:
+        Name: "Tassa plot"
+        Value: "`%plot_tax%`"
+        Inline: true
+      CommercialTax:
+        Name: "Tassa commerciali"
+        Value: "`%commercial_tax%`"
+        Inline: true
+      EmbassyTax:
+        Name: "Tassa ambasciate"
+        Value: "`%embassy_tax%`"
+        Inline: true
+      NationTax:
+        Name: "Tassa nazione — %nation%"
+        Value: "`%nation_tax%`"
+        Inline: true
+
+  # Risposta privata e paginata del pulsante Residenti.
+  # EntryFormat supporta anche PlaceholderAPI nel contesto di ogni residente.
+  ResidentsEmbed:
+    Color: "#2ECC71"
+    Title: "👥 Residenti — %town%"
+    Description: "%entries%"
+    Timestamp: false
+    Footer:
+      Text: "Pagina %page%/%pages% · %residents% residenti"
+      IconUrl: ""
+    PageSize: 12
+    EntryFormat: "• **%resident%** — %roles%\n  Ultimo accesso: %last_seen%"
+    MayorLabel: "Sindaco"
+    ResidentLabel: "Residente"
+    OnlineText: "🟢 Online ora"
+    NeverSeenText: "Mai"
+    LastSeenFormat: "<t:%timestamp%:F> (<t:%timestamp%:R>)"
+    PreviousLabel: "◀ Precedente"
+    NextLabel: "Successiva ▶"
+
+  Commands:
+    PleaseWait: "&7Please wait..."
+    NoPermission: "&7You don't have permission to use this command!"
+
+  Role:
+    DoNothing:
+      Success: "&7Role change not required!"
+      Failure: "&7Failed to do nothing!"
+    Remove:
+      Success: "&7Removed role!"
+      Failure: "&7Failed to remove role!"
+    Add:
+      Success: "&7Added role!"
+      Failure: "&7Failed to add role!"
+    Create:
+      Success: "&7Created role!"
+      Failure: "&7Failed to create role!"
+    Delete:
+      Success: "&7Deleted role!"
+      Failure: "&7Failed to delete role!"
+    Rename:
+      Success: "&7Renamed role!"
+      Failure: "&7Failed to rename role!"
+
+  TextChannel:
+    DoNothing:
+      Success: "&7TextChannel change not required!"
+      Failure: "&7Failed to do nothing!"
+    Remove:
+      Success: "&7Removed TextChannel!"
+      Failure: "&7Failed to remove TextChannel!"
+    Add:
+      Success: "&7Added TextChannel!"
+      Failure: "&7Failed to add TextChannel!"
+    Create:
+      Success: "&7Created TextChannel!"
+      Failure: "&7Failed to create TextChannel!"
+    Delete:
+      Success: "&7Deleted TextChannel!"
+      Failure: "&7Failed to delete TextChannel!"
+    Rename:
+      Success: "&7Renamed TextChannel!"
+      Failure: "&7Failed to rename TextChannel!"
+
+  VoiceChannel:
+    DoNothing:
+      Success: "&7VoiceChannel change not required!"
+      Failure: "&7Failed to do nothing!"
+    Remove:
+      Success: "&7Removed VoiceChannel!"
+      Failure: "&7Failed to remove VoiceChannel!"
+    Add:
+      Success: "&7Added VoiceChannel!"
+      Failure: "&7Failed to add VoiceChannel!"
+    Create:
+      Success: "&7Created VoiceChannel!"
+      Failure: "&7Failed to create VoiceChannel!"
+    Delete:
+      Success: "&7Deleted VoiceChannel!"
+      Failure: "&7Failed to delete VoiceChannel!"
+    Rename:
+      Success: "&7Renamed VoiceChannel!"
+      Failure: "&7Failed to rename VoiceChannel!"

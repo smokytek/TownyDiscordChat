@@ -1,0 +1,45 @@
+main: com.TownyDiscordChat.TownyDiscordChat.Main
+name: TownyDiscordChat
+version: 3.0.0
+api-version: '1.21'
+authors: 
+- thejames10
+- Hugo5000
+- Smokytek
+
+depend: [DiscordSRV, Towny]
+softdepend: [PlaceholderAPI, dynmap, InteractiveChat, InteractiveChatDiscordSrvAddon, TownyChat]
+
+commands:
+  townydiscordchat:
+    description: Link Discord and Towny Data
+    aliases: [tdc]
+    usage: /TownyDiscordChat
+
+permissions:
+  TownyDiscordChat.Admin:
+    description: Gives access to all TownyDiscordChat administration commands
+    children:
+      TownyDiscordChat.Check.Role.AllLinked: true
+      TownyDiscordChat.Check.Role: true
+      TownyDiscordChat.Check.Role.CreateAllTownsAndNations: true
+      TownyDiscordChat.Check.TextChannel.AllTownsAndNations: true
+      TownyDiscordChat.Check.VoiceChannel.AllTownsAndNations: true
+      TownyDiscordChat.Sync: true
+  TownyDiscordChat.Player:
+    description: Allows a player to synchronise their own Towny roles
+    children:
+      TownyDiscordChat.Check.Role: true
+  TownyDiscordChat.Sync:
+    description: Synchronises all TownyDiscordChat resources and linked accounts
+    default: op
+  TownyDiscordChat.Check.Role.AllLinked:
+    default: op
+  TownyDiscordChat.Check.Role:
+    default: true
+  TownyDiscordChat.Check.Role.CreateAllTownsAndNations:
+    default: op
+  TownyDiscordChat.Check.TextChannel.AllTownsAndNations:
+    default: op
+  TownyDiscordChat.Check.VoiceChannel.AllTownsAndNations:
+    default: op
