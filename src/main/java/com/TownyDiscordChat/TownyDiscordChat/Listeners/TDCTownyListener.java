@@ -34,6 +34,7 @@ import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -160,7 +161,7 @@ public final class TDCTownyListener implements Listener {
         Town town = event.getTown();
         plugin.manager().ensureTownResources(town);
         plugin.manager().refreshTownStaff(town);
-        plugin.manager().sendTownNotification(town, "📥 **Ingresso:** " + event.getResident().getName() + " è entrato in città.");
+        plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.resident_joined", Map.of("resident", event.getResident().getName())));
         synchroniseNextTick(event.getResident().getUUID());
     }
 
@@ -168,20 +169,20 @@ public final class TDCTownyListener implements Listener {
     public void onTownMemberRemoved(TownRemoveResidentEvent event) {
         Town town = event.getTown();
         plugin.manager().refreshTownStaff(town);
-        plugin.manager().sendTownNotification(town, "📤 **Uscita:** " + event.getResident().getName() + " ha lasciato la città.");
+        plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.resident_left", Map.of("resident", event.getResident().getName())));
         synchroniseNextTick(event.getResident().getUUID());
     }
 
     @EventHandler
     public void onTownJoinsNation(NationAddTownEvent event) {
         plugin.manager().ensureNationResources(event.getNation());
-        plugin.manager().sendTownNotification(event.getTown(), "🏳️ La città è entrata nella nazione **" + event.getNation().getName() + "**.");
+        plugin.manager().sendTownNotification(event.getTown(), TDCMessages.tr(plugin, "events.nation_joined", Map.of("nation", event.getNation().getName())));
         event.getTown().getResidents().forEach(resident -> synchroniseNextTick(resident.getUUID()));
     }
 
     @EventHandler
     public void onTownLeavesNation(NationRemoveTownEvent event) {
-        plugin.manager().sendTownNotification(event.getTown(), "🏳️ La città ha lasciato la nazione **" + event.getNation().getName() + "**.");
+        plugin.manager().sendTownNotification(event.getTown(), TDCMessages.tr(plugin, "events.nation_left", Map.of("nation", event.getNation().getName())));
         event.getTown().getResidents().forEach(resident -> synchroniseNextTick(resident.getUUID()));
     }
 
@@ -210,7 +211,7 @@ public final class TDCTownyListener implements Listener {
         if (event.isCancelled()) return;
         Town town = event.getTown();
         plugin.manager().refreshTownStaff(town);
-        plugin.manager().sendTownNotification(town, "👑 Nuovo sindaco: **" + event.getNewMayor().getName() + "**.");
+        plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.new_mayor", Map.of("resident", event.getNewMayor().getName())));
     }
 
     /** Registers only where the installed Towny version offers a bank event. */
@@ -312,9 +313,9 @@ public final class TDCTownyListener implements Listener {
 
     private String defaultTownChangeMessage(String action) {
         return switch (action) {
-            case "rank-add" -> "🏅 **Rango:** %resident% ha ottenuto **%rank%** nella città (da %actor%).";
-            case "rank-remove" -> "🏅 **Rango:** **%rank%** è stato rimosso da %resident% (da %actor%).";
-            default -> "💰 **Tasse:** la tassa della città è stata impostata a **%tax%** (da %actor%).";
+            case "rank-add" -> TDCMessages.tr(plugin, "events.rank_add", Map.of("resident", "%resident%", "rank", "%rank%", "actor", "%actor%"));
+            case "rank-remove" -> TDCMessages.tr(plugin, "events.rank_remove", Map.of("resident", "%resident%", "rank", "%rank%", "actor", "%actor%"));
+            default -> TDCMessages.tr(plugin, "events.taxes", Map.of("tax", "%tax%", "actor", "%actor%"));
         };
     }
 
@@ -356,11 +357,11 @@ public final class TDCTownyListener implements Listener {
                 Object hoursValue = firstObject(event, "getJailHours", "getHours");
                 String duration = hoursValue instanceof Number number && number.intValue() > 0
                         ? " per **" + number.intValue() + " ore**" : "";
-                plugin.manager().sendTownNotification(town, "⛓️ **Jail:** " + residentName + " è stato messo in jail" + duration + ".");
+                plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.jail", Map.of("resident", residentName, "duration", duration)));
             }
-            case "unjail" -> plugin.manager().sendTownNotification(town, "🔓 **Jail:** " + residentName + " è stato liberato.");
-            case "outlaw-add" -> plugin.manager().sendTownNotification(town, "⚖️ **Fuorilegge:** " + residentName + " è stato aggiunto ai fuorilegge.");
-            case "outlaw-remove" -> plugin.manager().sendTownNotification(town, "⚖️ **Fuorilegge:** " + residentName + " è stato rimosso dai fuorilegge.");
+            case "unjail" -> plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.unjail", Map.of("resident", residentName)));
+            case "outlaw-add" -> plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.outlaw_add", Map.of("resident", residentName)));
+            case "outlaw-remove" -> plugin.manager().sendTownNotification(town, TDCMessages.tr(plugin, "events.outlaw_remove", Map.of("resident", residentName)));
             default -> { }
         }
     }

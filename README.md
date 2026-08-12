@@ -3,6 +3,15 @@
 
 Plugin Paper/Purpur 1.21+ e 26.* che sincronizza Towny e DiscordSRV. Richiede Java 21+; Paper 26.* richiede Java 25 sul server.
 
+## Languages
+
+Built-in messages use English by default. Set `language` in `config.yml` to `en`, `it`, `fr`, `es` or `pl`:
+
+```yaml
+language: en
+```
+
+The five bundled locale files are copied to `plugins/TownyDiscordChat/locales/`. Missing translations fall back to English, and server owners can edit these files without rebuilding the plugin.
 La build usa soltanto API Bukkit/Paper pubbliche e mantiene `api-version: '1.21'` come versione minima: Paper 26.* può caricare plugin compilati per una API precedente. Non vengono usati NMS o nomi obfuscati. Towny, DiscordSRV e le integrazioni opzionali devono comunque essere versioni compatibili con il server scelto.
 
 ## Funzioni

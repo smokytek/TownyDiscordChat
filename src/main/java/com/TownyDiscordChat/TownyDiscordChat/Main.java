@@ -15,6 +15,7 @@ public final class Main extends JavaPlugin {
     private TDCManager manager;
     private TDCDiscordChatListener discordChatListener;
     private TDCDiscordSRVListener discordSRVListener;
+    private TDCLocales locales;
 
     @Override
     public void onEnable() {
@@ -22,6 +23,8 @@ public final class Main extends JavaPlugin {
         reloadConfig();
         getConfig().options().copyDefaults(true);
         saveConfig();
+
+        locales = new TDCLocales(this);
 
         manager = new TDCManager(this);
         Objects.requireNonNull(getCommand("townydiscordchat")).setExecutor(new TDCCommand(this));
@@ -64,5 +67,9 @@ public final class Main extends JavaPlugin {
 
     public FileConfiguration configuration() {
         return getConfig();
+    }
+
+    public TDCLocales locales() {
+        return locales;
     }
 }

@@ -17,35 +17,36 @@ public final class TDCCommand implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label,
                              @NotNull String[] args) {
         if (args.length == 0) {
-            TDCMessages.send(sender, plugin, "&a/TDC check role &7- sincronizza i tuoi ruoli.");
-            TDCMessages.send(sender, plugin, "&a/TDC sync &7- sincronizza ruoli e canali (admin).");
-            TDCMessages.send(sender, plugin, "&a/TDC reload &7- ricarica la configurazione (admin).");
+            TDCMessages.sendKey(sender, plugin, "commands.help_check", java.util.Map.of());
+            TDCMessages.sendKey(sender, plugin, "commands.help_sync", java.util.Map.of());
+            TDCMessages.sendKey(sender, plugin, "commands.help_reload", java.util.Map.of());
             return true;
         }
 
         if (args[0].equalsIgnoreCase("reload")) {
             boolean console = !(sender instanceof Player);
             if (!console && !sender.hasPermission("TownyDiscordChat.Admin")) {
-                TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+                TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
             plugin.reloadConfig();
             plugin.getConfig().options().copyDefaults(true);
             plugin.saveConfig();
+            plugin.locales().reload();
             plugin.manager().synchroniseAllResources();
             plugin.manager().synchroniseAllLinkedAccounts();
-            TDCMessages.send(sender, plugin, "&aConfigurazione ricaricata e risorse sincronizzate.");
+            TDCMessages.sendKey(sender, plugin, "commands.reload_done", java.util.Map.of());
             return true;
         }
 
         if (args[0].equalsIgnoreCase("sync")) {
             if (!sender.hasPermission("TownyDiscordChat.Sync")) {
-                TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+                TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
             plugin.manager().synchroniseAllResources();
             plugin.manager().synchroniseAllLinkedAccounts();
-            TDCMessages.send(sender, plugin, "&7Sincronizzazione avviata.");
+            TDCMessages.sendKey(sender, plugin, "commands.sync_started", java.util.Map.of());
             return true;
         }
 
@@ -53,7 +54,7 @@ public final class TDCCommand implements CommandExecutor {
                 && args[1].equalsIgnoreCase("delete")) {
             boolean console = !(sender instanceof Player);
             if (!console && !sender.hasPermission("TownyDiscordChat.Admin")) {
-                TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+                TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
             String target = args[2];
@@ -74,7 +75,7 @@ public final class TDCCommand implements CommandExecutor {
                 && args[1].equalsIgnoreCase("restore")) {
             boolean console = !(sender instanceof Player);
             if (!console && !sender.hasPermission("TownyDiscordChat.Admin")) {
-                TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+                TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
             String target = args[2];
@@ -103,7 +104,7 @@ public final class TDCCommand implements CommandExecutor {
                 return true;
             }
             if (!sender.hasPermission("TownyDiscordChat.Check.Role")) {
-                TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+                TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
             if (!plugin.manager().isLinked(player.getUniqueId())) {
@@ -124,17 +125,17 @@ public final class TDCCommand implements CommandExecutor {
             return runAdmin(sender, "TownyDiscordChat.Check.VoiceChannel.AllTownsAndNations", plugin.manager()::synchroniseAllResources);
         }
 
-        TDCMessages.send(sender, plugin, "&cSintassi non valida. Usa &f/tdc&c per l'aiuto.");
+        TDCMessages.sendKey(sender, plugin, "commands.invalid_syntax", java.util.Map.of());
         return true;
     }
 
     private boolean runAdmin(CommandSender sender, String permission, Runnable action) {
         if (!sender.hasPermission(permission) && !sender.hasPermission("TownyDiscordChat.Admin")) {
-            TDCMessages.send(sender, plugin, plugin.configuration().getString("messages.Commands.NoPermission"));
+            TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
             return true;
         }
         action.run();
-        TDCMessages.send(sender, plugin, "&7Sincronizzazione avviata.");
+        TDCMessages.sendKey(sender, plugin, "commands.sync_started", java.util.Map.of());
         return true;
     }
 }

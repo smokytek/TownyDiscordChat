@@ -1,3 +1,6 @@
+# Language for built-in messages: en, it, fr, es or pl. Missing keys fall back to English.
+language: en
+
 nation:
   CreateTextChannelForRole: true
   CreateVoiceChannelForRole: true

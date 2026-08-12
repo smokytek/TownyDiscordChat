@@ -146,6 +146,16 @@ Install PlaceholderAPI expansions required by your server and enable `placeholde
 
 For item previews, install InteractiveChat and InteractiveChat DiscordSRV Addon. Enable `interactivechat.UseDiscordSRVAddon`. Without the addon, TownyDiscordChat can send a fallback item embed for supported hover components.
 
+[SIZE=5][B]Languages[/B][/SIZE]
+Built-in messages are available in English, Italian, French, Spanish and Polish. English is the default:
+
+[CODE]
+language: en
+# en, it, fr, es or pl
+[/CODE]
+
+The selected file is loaded from `plugins/TownyDiscordChat/locales/<language>.yml`. Missing keys fall back to English, and locale files can be edited after the first server start.
+
 [SIZE=5][B]Compatibility notes[/B][/SIZE]
 The plugin uses public Bukkit/Paper APIs only and does not use NMS or obfuscated server classes. `api-version: '1.21'` is intentionally kept as the minimum API so the same JAR can load on newer Paper API generations. Paper 26.* changed its versioning scheme and requires Java 25; Towny, DiscordSRV and optional integrations must also support the selected server version.
 

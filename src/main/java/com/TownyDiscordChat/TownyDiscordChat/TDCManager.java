@@ -388,11 +388,11 @@ public final class TDCManager {
             if (!discordAdministrator) return "❌ Questo comando richiede il permesso Discord **Administrator**.";
             synchroniseAllResources();
             synchroniseAllLinkedAccounts();
-            return "✅ Sincronizzazione completa avviata.";
+            return TDCMessages.tr(plugin, "commands.global_sync");
         }
-        if (playerId == null) return "❌ Collega prima il tuo account Minecraft con `/discord link`.";
+        if (playerId == null) return TDCMessages.tr(plugin, "commands.link_required");
         Town town = townFor(playerId);
-        if (town == null) return "❌ Il tuo account Minecraft non appartiene a una città.";
+        if (town == null) return TDCMessages.tr(plugin, "commands.town_missing");
 
         return switch (subcommand) {
             case "info" -> "🏘️ **" + town.getName() + "**\n"
@@ -404,10 +404,10 @@ public final class TDCManager {
                 yield "✅ I tuoi ruoli Discord sono stati sincronizzati.";
             }
             case "notice" -> {
-                if (!isTownOfficer(town, playerId)) yield "❌ Solo sindaco e vice possono inviare avvisi alla città.";
-                if (message == null || message.isBlank()) yield "❌ Specifica il testo dell'avviso.";
+                if (!isTownOfficer(town, playerId)) yield TDCMessages.tr(plugin, "commands.notice_denied");
+                if (message == null || message.isBlank()) yield TDCMessages.tr(plugin, "commands.notice_missing");
                 sendTownNotification(town, "📣 **Avviso città da Discord**\n" + message);
-                yield "✅ Avviso inviato nel canale della città.";
+                yield TDCMessages.tr(plugin, "commands.notice_sent");
             }
             default -> "❌ Sottocomando non riconosciuto.";
         };
@@ -421,28 +421,28 @@ public final class TDCManager {
     public void requestTownDynmapMap(String discordId, String requestedTown, boolean discordAdministrator,
                                      Consumer<DynmapTownMapRenderer.Result> callback) {
         if (!plugin.configuration().getBoolean("dynmap.Enabled", false)) {
-            callback.accept(DynmapTownMapRenderer.Result.error("❌ La mappa Dynmap è disattivata nel config del plugin."));
+            callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.map_disabled")));
             return;
         }
         UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts().get(discordId);
         if (playerId == null) {
-            callback.accept(DynmapTownMapRenderer.Result.error("❌ Collega prima il tuo account Minecraft con `/discord link`."));
+            callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.link_required")));
             return;
         }
         Town linkedTown = townFor(playerId);
         if (linkedTown == null) {
-            callback.accept(DynmapTownMapRenderer.Result.error("❌ Il tuo account Minecraft non appartiene a una città."));
+            callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.town_missing")));
             return;
         }
         Town target = linkedTown;
         if (requestedTown != null && !requestedTown.isBlank() && !requestedTown.equalsIgnoreCase(linkedTown.getName())) {
             if (!discordAdministrator) {
-                callback.accept(DynmapTownMapRenderer.Result.error("❌ Puoi visualizzare solo la mappa della tua città."));
+                callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.channel_only")));
                 return;
             }
             target = TownyUniverse.getInstance().getTown(requestedTown);
             if (target == null) {
-                callback.accept(DynmapTownMapRenderer.Result.error("❌ Città non trovata: `" + requestedTown + "`."));
+                callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.town_not_found", Map.of("town", requestedTown))));
                 return;
             }
         }

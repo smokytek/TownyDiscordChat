@@ -4,6 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.OfflinePlayer;
+import java.util.Map;
 
 public final class TDCMessages {
     private TDCMessages() {
@@ -24,6 +25,18 @@ public final class TDCMessages {
 
     public static void send(Player player, Main plugin, String message) {
         send((CommandSender) player, plugin, message);
+    }
+
+    public static String tr(Main plugin, String key, Map<String, ?> values) {
+        return plugin.locales().get(key, values);
+    }
+
+    public static String tr(Main plugin, String key) {
+        return tr(plugin, key, Map.of());
+    }
+
+    public static void sendKey(CommandSender sender, Main plugin, String key, Map<String, ?> values) {
+        send(sender, plugin, tr(plugin, key, values));
     }
 
     public static String colour(String value) {
