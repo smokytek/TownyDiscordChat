@@ -1,94 +1,21 @@
 # TownyDiscordChat 3.2.0
-(English version below)
 
-Plugin Paper/Purpur 1.21+ e 26.* che sincronizza Towny e DiscordSRV. Richiede Java 21+; Paper 26.* richiede Java 25 sul server.
+TownyDiscordChat is a Paper/Purpur bridge between Towny Advanced and DiscordSRV. It creates private town and nation resources, provides a town-only two-way chat bridge, keeps linked accounts synchronized, and publishes configurable Towny activity to Discord.
 
-## Languages
+## Compatibility
 
-Built-in messages use English by default. Set `language` in `config.yml` to `en`, `it`, `fr`, `es` or `pl`:
+- Paper/Purpur 1.21+ and 26.*
+- Java 21+ for 1.21.x; Java 25 is required by Paper 26.*
+- Public Bukkit/Paper APIs only; no NMS or obfuscated server classes
 
-```yaml
-language: en
-```
+## Requirements
 
-The five bundled locale files are copied to `plugins/TownyDiscordChat/locales/`. Missing translations fall back to English, and server owners can edit these files without rebuilding the plugin.
-La build usa soltanto API Bukkit/Paper pubbliche e mantiene `api-version: '1.21'` come versione minima: Paper 26.* può caricare plugin compilati per una API precedente. Non vengono usati NMS o nomi obfuscati. Towny, DiscordSRV e le integrazioni opzionali devono comunque essere versioni compatibili con il server scelto.
+Required plugins:
 
-## Funzioni
+- [Towny Advanced](https://github.com/TownyAdvanced/Towny)
+- [DiscordSRV](https://github.com/DiscordSRV/DiscordSRV), configured with a Main Guild
 
-- Crea e mantiene i ruoli `town-<citta>` e `nation-<nazione>`.
-- Crea canali testuali e vocali privati per town e nation.
-- Riconcilia gli account Discord collegati: rimuove i ruoli Towny non più corretti e assegna solo quelli della town/nation corrente.
-- Collega la chat della town: Minecraft -> canale Discord della town e canale Discord della town -> residenti Minecraft online.
-- Blocca il bridge Discord per utenti non collegati o appartenenti a una town diversa.
-- Pubblica ingressi/uscite, cambi di sindaco, movimenti bancari e riepiloghi NewDay nel canale principale della citta, senza creare canali staff separati.
-- Al NewDay annuncia nel canale globale DiscordSRV bancarotte, rovine e cadute con embed e dieci cronache configurabili; i residenti NPC sono esclusi.
-- Invia i movimenti bancari come embed configurabili in `messages.BankEmbed`, con i placeholder `%town%`, `%type%`, `%amount%`, `%balance%`, `%actor%` (anche `%player%`), `%reason%`, `%residents%` e `%tax%`.
-- Se PlaceholderAPI è installato, i suoi placeholder esterni possono essere usati nei formati chat e nei testi dell'embed; sono risolti nel contesto del giocatore che ha generato l'operazione.
-- Registra il comando slash `/town`: `info`, `sync`, `map`, `notice` per sindaco/vice e `resync` per gli amministratori Discord.
-
-## Configurazione necessaria
-
-1. Installa Towny e DiscordSRV aggiornati e configura DiscordSRV con un **Main Guild**.
-2. Al bot Discord assegna almeno: `Manage Roles`, `Manage Channels`, `View Channels`, `Send Messages` e `Read Message History`. Il ruolo del bot deve stare sopra ai ruoli creati dal plugin.
-3. In `plugins/TownyDiscordChat/config.yml`, imposta gli ID delle categorie Discord desiderate:
-
-```yml
-town:
-  TextCategoryId: "123456789012345678"
-  VoiceCategoryId: "123456789012345679"
-```
-
-`0` significa “nessuna categoria” per i canali standard.
-
-4. Abilita il **Message Content Intent** per il bot nel portale sviluppatori Discord: è necessario per ricevere i messaggi Discord del bridge.
-5. Avvia il server e usa `/tdc sync` come amministratore per creare/riparare tutte le risorse.
-
-## Comandi
-
-- `/tdc check role` — sincronizza i ruoli del giocatore.
-- `/tdc check role alllinked` — sincronizza tutti gli account collegati.
-- `/tdc check role createalltownsandnations` — crea/verifica ruoli e risorse.
-- `/tdc check textchannel alltownsandnations` — verifica le risorse testuali.
-- `/tdc check voicechannel alltownsandnations` — verifica le risorse vocali.
-- `/tdc sync` — sincronizzazione completa (admin).
-- `/tdc channels delete <città|all>` — elimina solo i canali Discord della città indicata o di tutte le città; disponibile ad admin e console, mantiene i ruoli.
-- `/tdc channels restore <città|all>` — riabilita e ricrea i canali eliminati intenzionalmente.
-
-## Comandi Discord
-
-- `/town info` — riepilogo privato della propria città.
-- `/town sync` — riallinea i propri ruoli Discord.
-- `/town map` — genera la vista Dynmap dall'alto della propria città.
-- `/town notice messaggio:<testo>` — invia un avviso nel canale cittadino (sindaco/vice).
-- `/town resync` — riallinea tutto il plugin (permesso Discord `Administrator`).
-
-## Build
-
-```bash
-mvn clean package
-```
-
-L'artefatto viene generato in `target/TownyDiscordChat-3.2.0-1.21+-26+.jar`.
-
-## Autori e collaboratori
-
-- thejames10
-- Hugo5000
-- Smokytek
-
-## Ispirazione
-
-Il progetto nasce come evoluzione e re-implementazione ispirata a [TownyDiscordChat su SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). Il codice e le funzionalita presenti in questa repository sono stati adattati ed estesi per Paper/Purpur 1.21 e successive versioni 1.21.x.
-
-## Dipendenze
-
-Dipendenze obbligatorie dichiarate in `plugin.yml`:
-
-- [Towny](https://github.com/TownyAdvanced/Towny)
-- [DiscordSRV](https://github.com/DiscordSRV/DiscordSRV)
-
-Soft-dependencies opzionali:
+Optional soft-dependencies:
 
 - [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI)
 - [Dynmap](https://github.com/webbukkit/dynmap)
@@ -96,41 +23,67 @@ Soft-dependencies opzionali:
 - [InteractiveChat DiscordSRV Addon](https://modrinth.com/plugin/interactivechat-discordsrv-addon)
 - TownyChat
 
----
+## Features
 
-# TownyDiscordChat 3.2.0 — English
+- Automatically creates and synchronizes `town-<name>` and `nation-<name>` roles, text channels and voice channels.
+- Town-only Minecraft ↔ Discord chat bridge with linked-account and wrong-town protection.
+- Sends town notifications in the main town channel; no separate staff channel is required.
+- Configurable bank embeds with transaction type, amount, balance, actor, reason and PlaceholderAPI values.
+- Town events for residents joining/leaving, mayor changes, rank changes, jail, outlaw and tax changes.
+- NewDay summaries with Taxes, Residents and Outposts buttons.
+- Resident lists with ranks and last access, plus paginated outpost names, PlotGroup names and coordinates.
+- Global NewDay embeds for bankrupt, ruined or fallen towns, with configurable story variants and NPC residents excluded.
+- Dynmap overhead images through `/town map`.
+- InteractiveChat item previews through the DiscordSRV addon, plus a fallback item embed for supported components.
+- Built-in locales: English, Italian, French, Spanish and Polish.
 
-TownyDiscordChat bridges Towny and DiscordSRV on Paper/Purpur 1.21+ and 26.*. It requires Java 21+; Paper 26.* requires Java 25 on the server. It creates town/nation roles and channels, provides a town-only two-way chat bridge, synchronizes linked accounts, and publishes configurable Towny notifications.
+## Languages
 
-The build uses public Bukkit/Paper APIs only and keeps `api-version: '1.21'` as its minimum: Paper 26.* can load plugins targeting an older API. It does not use NMS or obfuscated names. Towny, DiscordSRV and optional integrations must still be versions compatible with the selected server.
+English is the default language. Set the following in `plugins/TownyDiscordChat/config.yml`:
 
-## Requirements
+```yaml
+language: en # en, it, fr, es or pl
+```
 
-Required dependencies:
+On first start, the plugin copies the five locale files to `plugins/TownyDiscordChat/locales/`. Missing keys fall back to English. These files can be edited without rebuilding the plugin.
 
-- [Towny](https://github.com/TownyAdvanced/Towny)
-- [DiscordSRV](https://github.com/DiscordSRV/DiscordSRV)
+## Installation
 
-Optional soft-dependencies:
+1. Install Towny Advanced and DiscordSRV and configure DiscordSRV's Main Guild.
+2. Give the Discord bot Manage Roles, Manage Channels, Manage Channel Permissions, View Channels, Send Messages, Embed Links and Read Message History.
+3. Put the bot role above the roles created by TownyDiscordChat.
+4. Enable Discord's Message Content Intent.
+5. Place the jar in `plugins/`, start the server, edit `config.yml`, then run `/tdc sync` as console or an administrator.
 
-- [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) for external placeholders.
-- [Dynmap](https://github.com/webbukkit/dynmap) for the `/town map` command.
-- [InteractiveChat](https://github.com/LOOHP/InteractiveChat) and [InteractiveChat DiscordSRV Addon](https://modrinth.com/plugin/interactivechat-discordsrv-addon) for item previews.
-- TownyChat for channel detection through placeholders and command fallbacks.
+## Commands
 
-## Main features
+### Minecraft
 
-- Town and nation Discord roles and channels.
-- Town-only Minecraft ↔ Discord bridge with linked-account and wrong-town checks.
-- Configurable bank, jail, outlaw, resident, rank and tax notifications.
-- NewDay town summaries with Taxes, Residents and Outposts buttons.
-- Global DiscordSRV announcements for bankrupt, ruined or fallen towns.
-- PlaceholderAPI support in configurable text and embed fields.
-- Dynmap map command and InteractiveChat item integration.
+- `/tdc check role` — synchronize your own Towny roles.
+- `/tdc check role alllinked` — synchronize all linked accounts.
+- `/tdc check role createalltownsandnations` — create or repair all Towny resources.
+- `/tdc check textchannel alltownsandnations` — verify town and nation text channels.
+- `/tdc check voicechannel alltownsandnations` — verify voice channels.
+- `/tdc sync` — synchronize all resources and linked accounts.
+- `/tdc channels delete <town|all>` — delete town channels while keeping roles (admin or console).
+- `/tdc channels restore <town|all>` — re-enable and recreate intentionally deleted channels.
+- `/t discord <newday|chat|jail> <enable|disable>` — configure a town feature as mayor or assistant.
 
-## Inspiration
+### Discord
 
-This project was inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/). This repository contains an adapted and extended implementation targeting Paper/Purpur 1.21+ and the 26.* version family.
+- `/town info` — private summary of your linked town.
+- `/town sync` — synchronize your Discord roles.
+- `/town map [town]` — show a Dynmap overhead image; other towns require Discord Administrator or a configured admin role.
+- `/town notice message:<text>` — send a notice to the town channel as mayor or assistant.
+- `/town resync` — synchronize all resources; Discord Administrator only.
+
+## Configuration
+
+All bridge formats, embed titles, descriptions, fields, buttons, event messages, PlaceholderAPI placeholders, Dynmap settings and feature toggles are configurable in `config.yml`. Native placeholders include `%town%`, `%mayor%`, `%message%`, `%actor%`, `%resident%`, `%rank%`, `%tax%`, `%balance%` and `%reason%`.
+
+## Permissions
+
+`TownyDiscordChat.Admin`, `TownyDiscordChat.Player`, `TownyDiscordChat.Sync`, `TownyDiscordChat.Check.Role`, `TownyDiscordChat.Check.Role.AllLinked`, `TownyDiscordChat.Check.Role.CreateAllTownsAndNations`, `TownyDiscordChat.Check.TextChannel.AllTownsAndNations`, `TownyDiscordChat.Check.VoiceChannel.AllTownsAndNations`.
 
 ## Build
 
@@ -138,4 +91,10 @@ This project was inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc
 mvn clean package
 ```
 
-The generated artifact is `target/TownyDiscordChat-3.2.0-1.21+-26+.jar`.
+The artifact is generated as `target/TownyDiscordChat-3.2.0-1.21+-26+.jar`.
+
+## Inspiration and credits
+
+Inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/).
+
+Authors and contributors: thejames10, Hugo5000 and Smokytek.
