@@ -112,3 +112,6 @@ The plugin uses public Bukkit/Paper APIs only and no NMS. Towny, DiscordSRV and 
 Inspired by [URL='https://www.spigotmc.org/resources/townydiscordchat.91026/']TownyDiscordChat on SpigotMC[/URL].
 
 [B]Authors and contributors:[/B] thejames10, Hugo5000 and Smokytek.
+
+[SIZE=5][B]Support the project[/B][/SIZE]
+If TownyDiscordChat is useful to your server, please leave a positive review on [URL='https://www.spigotmc.org/resources/townydiscordchat.91026/']SpigotMC[/URL]. Your feedback helps other server owners discover the resource and supports continued development.

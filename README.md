@@ -98,3 +98,7 @@ The artifact is generated as `target/TownyDiscordChat-3.2.0-1.21+-26+.jar`.
 Inspired by [TownyDiscordChat on SpigotMC](https://www.spigotmc.org/resources/townydiscordchat.91026/).
 
 Authors and contributors: thejames10, Hugo5000 and Smokytek.
+
+## Support the project
+
+If TownyDiscordChat is useful to you, please [star the project on GitHub](https://github.com/smokytek/TownyDiscordChat). Stars help the project reach more server owners and motivate future development.
