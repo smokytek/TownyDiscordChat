@@ -16,6 +16,7 @@ import github.scarsz.discordsrv.dependencies.jda.api.entities.MessageEmbed;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.PermissionOverride;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Role;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
+import github.scarsz.discordsrv.dependencies.jda.api.entities.VoiceChannel;
 import github.scarsz.discordsrv.dependencies.jda.api.requests.restaction.ChannelAction;
 import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.OptionType;
 import github.scarsz.discordsrv.dependencies.jda.api.interactions.commands.build.CommandData;
@@ -74,6 +75,49 @@ public final class TDCManager {
         for (Nation nation : new ArrayList<>(TownyUniverse.getInstance().getNations())) {
             ensureNationResources(nation);
         }
+        // Remove channels left behind by deleted/renamed Towny objects. This is
+        // deliberately limited to channels carrying a TownyDiscordChat role
+        // permission, so unrelated Discord channels are never touched.
+        cleanupObsoleteManagedChannels();
+    }
+
+    /** Deletes managed town/nation channels whose names no longer exist in Towny. */
+    public int cleanupObsoleteManagedChannels() {
+        Guild guild = guild();
+        if (guild == null) return 0;
+        Set<String> towns = TownyUniverse.getInstance().getTowns().stream()
+                .map(Town::getName).map(this::normalise).collect(java.util.stream.Collectors.toSet());
+        Set<String> nations = TownyUniverse.getInstance().getNations().stream()
+                .map(Nation::getName).map(this::normalise).collect(java.util.stream.Collectors.toSet());
+        int[] removed = {0};
+        for (TextChannel channel : guild.getTextChannels()) {
+            if (isObsoleteManagedChannel(channel, towns, nations)) {
+                removed[0]++;
+                channel.delete().queue();
+            }
+        }
+        for (VoiceChannel channel : guild.getVoiceChannels()) {
+            if (isObsoleteManagedChannel(channel, towns, nations)) {
+                removed[0]++;
+                channel.delete().queue();
+            }
+        }
+        if (removed[0] > 0) log("Removed " + removed[0] + " obsolete TownyDiscordChat channel(s).");
+        return removed[0];
+    }
+
+    private boolean isObsoleteManagedChannel(github.scarsz.discordsrv.dependencies.jda.api.entities.GuildChannel channel,
+                                              Set<String> towns, Set<String> nations) {
+        Category parent = channel.getParent();
+        String categoryId = parent == null ? null : parent.getId();
+        boolean townCategory = categoryId != null && (categoryId.equals(townTextCategoryId()) || categoryId.equals(townVoiceCategoryId()));
+        boolean nationCategory = categoryId != null && (categoryId.equals(nationTextCategoryId()) || categoryId.equals(nationVoiceCategoryId()));
+        if (!townCategory && !nationCategory) return false;
+        boolean managed = channel.getRolePermissionOverrides().stream().map(PermissionOverride::getRole)
+                .filter(java.util.Objects::nonNull).anyMatch(this::isManagedRole);
+        if (!managed) return false;
+        String name = normalise(channel.getName());
+        return townCategory ? !towns.contains(name) : !nations.contains(name);
     }
 
     public void synchroniseAllLinkedAccounts() {
@@ -888,9 +932,28 @@ public final class TDCManager {
         Guild guild = guild();
         if (guild == null) return;
         Role role = roleByName(guild, oldRole);
-        if (role != null) role.getManager().setName(newRole).queue();
+        if (role != null) {
+            // Rename channels by the existing role permission first. This also
+            // works when another plugin has already changed the channel name.
+            String roleId = role.getId();
+            guild.getTextChannels().stream()
+                    .filter(channel -> matchesCategory(channel.getParent(), textCategory))
+                    .filter(channel -> hasRoleOverride(channel, roleId))
+                    .forEach(channel -> channel.getManager().setName(newName).queue());
+            guild.getVoiceChannels().stream()
+                    .filter(channel -> matchesCategory(channel.getParent(), voiceCategory))
+                    .filter(channel -> hasRoleOverride(channel, roleId))
+                    .forEach(channel -> channel.getManager().setName(newName).queue());
+            role.getManager().setName(newRole).queue();
+        }
         renameText(guild, oldName, newName, textCategory);
         renameVoice(guild, oldName, newName, voiceCategory);
+    }
+
+    private boolean hasRoleOverride(github.scarsz.discordsrv.dependencies.jda.api.entities.GuildChannel channel, String roleId) {
+        return channel.getRolePermissionOverrides().stream()
+                .map(PermissionOverride::getRole).filter(java.util.Objects::nonNull)
+                .anyMatch(role -> role.getId().equals(roleId));
     }
 
     private void deleteManagedResources(String roleName, String name, String textCategory, String voiceCategory) {
