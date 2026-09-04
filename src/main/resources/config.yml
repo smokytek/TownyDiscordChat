@@ -60,9 +60,9 @@ townychat:
   TownChannelNames: ["town"]
   CommandListener:
     Enabled: true
-    TownCommands: ["tc"]
-    LocalCommands: ["l", "lc"]
-    OtherCommands: ["g", "nc", "a", "admin", "m", "mod"]
+    TownCommands: ["tc", "townchat", "town"]
+    LocalCommands: ["l", "lc", "localchat", "local"]
+    OtherCommands: ["g", "global", "globalchat", "nc", "nationchat", "a", "admin", "m", "mod", "chat"]
   LocalNoNearbyPlayersWarning:
     Enabled: true
     ChannelNames: ["local"]

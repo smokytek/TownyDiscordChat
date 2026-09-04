@@ -28,14 +28,12 @@ public final class TDCDiscordSRVListener {
 
     /**
      * DiscordSRV's generic Paper listener treats every modern chat message as
-     * global. TownyDiscordChat sends the town copy again through a dedicated
-     * virtual channel, so reject only the generic copy to avoid duplicates.
+     * global. TownyDiscordChat sends town chat through a dedicated virtual
+     * channel, so reject every generic copy (including global/nation chat).
      */
     @Subscribe(priority = ListenerPriority.LOWEST)
     public void onGameChatMessage(GameChatMessagePreProcessEvent event) {
         if (event.isCancelled() || (event.getChannel() != null && event.getChannel().startsWith(TDC_CHANNEL_PREFIX))) return;
-        if (minecraftChatListener.isCurrentTownChannel(event.getPlayer())) {
-            event.setCancelled(true);
-        }
+        event.setCancelled(true);
     }
 }

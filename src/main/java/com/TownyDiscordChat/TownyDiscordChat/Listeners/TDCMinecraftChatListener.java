@@ -92,7 +92,7 @@ public final class TDCMinecraftChatListener implements Listener {
         return restored.toString();
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onTownyChatCommand(PlayerCommandPreprocessEvent event) {
         if (!plugin.configuration().getBoolean("townychat.Enabled", true)
                 || !plugin.configuration().getBoolean("townychat.CommandListener.Enabled", true)) return;
@@ -102,13 +102,26 @@ public final class TDCMinecraftChatListener implements Listener {
         int namespace = command.indexOf(':');
         if (namespace >= 0) command = command.substring(namespace + 1);
         UUID playerId = event.getPlayer().getUniqueId();
-        if (matchesCommand(command, "townychat.CommandListener.TownCommands")) {
+        String[] parts = raw.substring(1).split("\\s+");
+        if (matchesCommand(command, "townychat.CommandListener.TownCommands")
+                || channelArgumentMatches(parts, "townychat.TownChannelNames")) {
             channelHints.put(playerId, configuredPrimaryName("townychat.TownChannelNames", "town"));
-        } else if (matchesCommand(command, "townychat.CommandListener.LocalCommands")) {
+        } else if (matchesCommand(command, "townychat.CommandListener.LocalCommands")
+                || channelArgumentMatches(parts, "townychat.LocalNoNearbyPlayersWarning.ChannelNames")) {
             channelHints.put(playerId, configuredPrimaryName("townychat.LocalNoNearbyPlayersWarning.ChannelNames", "local"));
-        } else if (matchesCommand(command, "townychat.CommandListener.OtherCommands")) {
+        } else if (matchesCommand(command, "townychat.CommandListener.OtherCommands")
+                || channelArgumentMatches(parts, "townychat.CommandListener.OtherCommands")) {
             channelHints.remove(playerId);
         }
+    }
+
+    /** Supports channel-switch commands such as /ch town, /chat global and /channel local. */
+    private boolean channelArgumentMatches(String[] parts, String configPath) {
+        if (parts.length < 2) return false;
+        String command = parts[0].toLowerCase(java.util.Locale.ROOT);
+        if (!(command.equals("ch") || command.equals("channel") || command.equals("chat") || command.equals("townychat"))) return false;
+        String argument = parts[1].toLowerCase(java.util.Locale.ROOT);
+        return plugin.configuration().getStringList(configPath).stream().anyMatch(value -> value.equalsIgnoreCase(argument));
     }
 
     private boolean matchesCommand(String command, String configPath) {
