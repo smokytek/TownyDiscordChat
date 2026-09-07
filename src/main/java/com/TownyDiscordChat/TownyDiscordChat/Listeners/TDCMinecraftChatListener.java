@@ -77,6 +77,14 @@ public final class TDCMinecraftChatListener implements Listener {
     /** Reads TownyChat's PlaceholderAPI channel value, with command tracking as a no-hook fallback. */
     private String currentTownyChatChannel(Player player) {
         if (!plugin.configuration().getBoolean("townychat.Enabled", true)) return "";
+        // TownyChat 0.119 exposes the authoritative channel through
+        // Chat#getPlayerChannel(Player). Resolve it reflectively so TownyChat
+        // remains optional and no hard class dependency is introduced.
+        String apiChannel = townyChatApiChannel(player);
+        if (!apiChannel.isBlank()) {
+            channelHints.put(player.getUniqueId(), apiChannel);
+            return apiChannel;
+        }
         String placeholder = plugin.configuration().getString("townychat.ChannelPlaceholder", "%townychat_channel_name%");
         String resolved = TDCPlaceholders.resolve(plugin, player, placeholder);
         if (resolved != null && !resolved.isBlank() && !resolved.equals(placeholder) && !resolved.contains("%")) {
@@ -86,7 +94,25 @@ public final class TDCMinecraftChatListener implements Listener {
                 return channel;
             }
         }
+        // Keep the command-based fallback for TownyChat versions without the
+        // PlaceholderAPI expansion. Global aliases are invalidated below by
+        // isGlobalChatCommand(), preventing the old town hint from leaking.
         return channelHints.getOrDefault(player.getUniqueId(), "");
+    }
+
+    private String townyChatApiChannel(Player player) {
+        try {
+            Class<?> chatClass = Class.forName("com.palmergames.bukkit.TownyChat.Chat");
+            Object chat = chatClass.getMethod("getTownyChat").invoke(null);
+            if (chat == null) return "";
+            Object channel = chatClass.getMethod("getPlayerChannel", Player.class).invoke(chat, player);
+            if (channel == null) return "";
+            Object name = channel.getClass().getMethod("getName").invoke(channel);
+            return name == null ? "" : TDCMessages.strip(String.valueOf(name)).trim();
+        } catch (Throwable ignored) {
+            // TownyChat is optional; fall back to PlaceholderAPI/commands.
+            return "";
+        }
     }
 
     /** Used by the DiscordSRV listener to suppress its second, global copy of town chat. */
@@ -116,6 +142,14 @@ public final class TDCMinecraftChatListener implements Listener {
         if (namespace >= 0) command = command.substring(namespace + 1);
         UUID playerId = event.getPlayer().getUniqueId();
         String[] parts = raw.substring(1).split("\\s+");
+        // TownyChat installations commonly expose global as /g, /gc, /global
+        // or as an argument to /ch, /chat and /channel.  Handle these aliases
+        // independently of the configurable list so a global switch always
+        // invalidates a previous town hint.
+        if (isGlobalChatCommand(command, parts)) {
+            channelHints.remove(playerId);
+            return;
+        }
         if (matchesCommand(command, "townychat.CommandListener.TownCommands")
                 || channelArgumentMatches(parts, "townychat.TownChannelNames")) {
             channelHints.put(playerId, configuredPrimaryName("townychat.TownChannelNames", "town"));
@@ -129,6 +163,17 @@ public final class TDCMinecraftChatListener implements Listener {
                 || channelArgumentMatches(parts, "townychat.CommandListener.OtherCommands")) {
             channelHints.remove(playerId);
         }
+    }
+
+    private boolean isGlobalChatCommand(String command, String[] parts) {
+        if (command.equals("g") || command.equals("gc") || command.equals("global")
+                || command.equals("globalchat") || command.equals("globalchannel")) return true;
+        if (!(command.equals("ch") || command.equals("channel") || command.equals("chat")
+                || command.equals("townychat"))) return false;
+        if (parts.length < 2) return false;
+        String argument = parts[1].toLowerCase(java.util.Locale.ROOT);
+        return argument.equals("g") || argument.equals("gc") || argument.equals("global")
+                || argument.equals("globalchat") || argument.equals("globalchannel");
     }
 
     /** Supports channel-switch commands such as /ch town, /chat global and /channel local. */
