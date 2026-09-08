@@ -35,6 +35,7 @@ public final class Main extends JavaPlugin {
         townyListener.registerOptionalTownChangeListeners();
         TDCMinecraftChatListener minecraftChatListener = new TDCMinecraftChatListener(this);
         getServer().getPluginManager().registerEvents(minecraftChatListener, this);
+        minecraftChatListener.registerTownyChatMessageHook();
 
         discordSRVListener = new TDCDiscordSRVListener(this, minecraftChatListener);
         DiscordSRV.api.subscribe(discordSRVListener);

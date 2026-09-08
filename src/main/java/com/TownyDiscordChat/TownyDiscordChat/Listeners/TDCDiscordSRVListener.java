@@ -36,6 +36,7 @@ public final class TDCDiscordSRVListener {
     public void onGameChatMessage(GameChatMessagePreProcessEvent event) {
         if (event.isCancelled() || (event.getChannel() != null &&
                 (event.getChannel().startsWith(TDC_CHANNEL_PREFIX) || event.getChannel().startsWith(TDC_NATION_PREFIX)))) return;
-        if (minecraftChatListener.isCurrentTownChannel(event.getPlayer())) event.setCancelled(true);
+        if (minecraftChatListener.shouldSuppressGlobalCopy(
+                event.getTriggeringBukkitEvent(), event.getPlayer(), event.getMessage())) event.setCancelled(true);
     }
 }

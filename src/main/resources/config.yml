@@ -62,6 +62,9 @@ townychat:
   ChannelPlaceholder: "%townychat_channel_name%"
   TownChannelNames: ["town"]
   NationChannelNames: ["nation", "nc"]
+  # Only these GLOBAL-type TownyChat channels are forwarded by DiscordSRV.
+  # Other GLOBAL-type channels (local, VIP, announcements, etc.) stay in-game.
+  GlobalChannelNames: ["general", "global", "globale"]
   CommandListener:
     Enabled: true
     TownCommands: ["tc", "townchat", "town"]
@@ -70,7 +73,7 @@ townychat:
     NationCommands: ["nc", "nationchat", "nation"]
   LocalNoNearbyPlayersWarning:
     Enabled: true
-    ChannelNames: ["local"]
+    ChannelNames: ["local", "locale"]
     Radius: 100
     Message: "&cNessuno può leggere il tuo messaggio ora, prova a scrivere nel canale globale con &f/g&c."
 

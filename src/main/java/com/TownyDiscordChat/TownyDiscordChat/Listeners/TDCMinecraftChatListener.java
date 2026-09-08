@@ -11,11 +11,13 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.Event;
 import org.bukkit.event.Listener;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,13 +35,113 @@ public final class TDCMinecraftChatListener implements Listener {
     private static final Pattern INTERACTIVE_CHAT_TOKEN = Pattern.compile("<chat=[^:<>]+:(.*?):>");
     private final Main plugin;
     private final Map<UUID, String> channelHints = new ConcurrentHashMap<>();
+    private final Map<Event, MessageRoute> routesByEvent = java.util.Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<UUID, RoutedMessage> latestRoutes = new ConcurrentHashMap<>();
+    private volatile boolean townyChatHookActive;
+
+    private enum MessageRoute { GLOBAL, TOWN, NATION, IGNORE }
+    private record RoutedMessage(String message, MessageRoute route, long createdAt) {}
 
     public TDCMinecraftChatListener(Main plugin) {
         this.plugin = plugin;
     }
 
+    /**
+     * Registers TownyChat's per-message hook without linking TownyChat classes
+     * into this plugin. This keeps TownyChat optional and avoids class-loading
+     * failures from its optional integrations.
+     */
+    @SuppressWarnings("unchecked")
+    public boolean registerTownyChatMessageHook() {
+        if (!plugin.configuration().getBoolean("townychat.Enabled", true)) return false;
+        Plugin townyChat = plugin.getServer().getPluginManager().getPlugin("TownyChat");
+        if (townyChat == null || !townyChat.isEnabled()) return false;
+        try {
+            ClassLoader loader = townyChat.getClass().getClassLoader();
+            Class<? extends Event> eventClass = (Class<? extends Event>) Class
+                    .forName("com.palmergames.bukkit.TownyChat.events.AsyncChatHookEvent", false, loader)
+                    .asSubclass(Event.class);
+            plugin.getServer().getPluginManager().registerEvent(eventClass, this, EventPriority.MONITOR,
+                    (listener, event) -> handleTownyChatMessage(event), plugin, true);
+            enableTownyChatHookEvents(townyChat);
+            townyChatHookActive = true;
+            plugin.getLogger().info("TownyChat per-message routing enabled; channel types are now authoritative.");
+            return true;
+        } catch (Throwable error) {
+            plugin.getLogger().warning("Could not enable TownyChat per-message routing: " + error.getMessage());
+            return false;
+        }
+    }
+
+    private void enableTownyChatHookEvents(Plugin townyChat) throws ReflectiveOperationException {
+        Object holder = townyChat.getClass().getMethod("getChannelsHandler").invoke(townyChat);
+        Object value = holder.getClass().getMethod("getAllChannels").invoke(holder);
+        if (!(value instanceof Map<?, ?> channels)) return;
+        for (Object channel : channels.values()) {
+            if (channel != null) channel.getClass().getMethod("setHooked", boolean.class).invoke(channel, true);
+        }
+    }
+
+    private void handleTownyChatMessage(Event hookEvent) {
+        try {
+            if ((boolean) hookEvent.getClass().getMethod("isCancelled").invoke(hookEvent)) return;
+            Player player = (Player) hookEvent.getClass().getMethod("getPlayer").invoke(hookEvent);
+            String message = String.valueOf(hookEvent.getClass().getMethod("getMessage").invoke(hookEvent));
+            Object channel = hookEvent.getClass().getMethod("getChannel").invoke(hookEvent);
+            if (player == null || channel == null || message.isBlank()) return;
+
+            String channelName = String.valueOf(channel.getClass().getMethod("getName").invoke(channel));
+            String channelType = String.valueOf(channel.getClass().getMethod("getType").invoke(channel));
+            MessageRoute route = routeFor(channelName, channelType);
+            Object source = hookEvent.getClass().getMethod("getAsyncPlayerChatEvent").invoke(hookEvent);
+            if (source instanceof Event sourceEvent) routesByEvent.put(sourceEvent, route);
+            latestRoutes.put(player.getUniqueId(), new RoutedMessage(message, route, System.nanoTime()));
+
+            String discordText = restoreInteractiveChatPlaceholders(message);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                Player online = plugin.getServer().getPlayer(player.getUniqueId());
+                if (online == null) return;
+                if (route == MessageRoute.TOWN) {
+                    if (!plugin.manager().relayMinecraftMessageThroughDiscordSRV(online, discordText)) {
+                        plugin.manager().relayMinecraftMessage(online.getUniqueId(), online.getName(), discordText);
+                    }
+                } else if (route == MessageRoute.NATION) {
+                    if (!plugin.manager().relayNationMinecraftMessageThroughDiscordSRV(online, discordText)) {
+                        plugin.manager().relayNationMinecraftMessage(online, online.getName(), discordText);
+                    }
+                } else if (isConfiguredChannel(channelName, "townychat.LocalNoNearbyPlayersWarning.ChannelNames")) {
+                    warnLocalChatIfAlone(online);
+                }
+            });
+        } catch (Throwable error) {
+            plugin.getLogger().warning("Could not route a TownyChat message: " + error.getMessage());
+        }
+    }
+
+    private MessageRoute routeFor(String channelName, String channelType) {
+        if (channelType.equalsIgnoreCase("TOWN")) return MessageRoute.TOWN;
+        if (channelType.equalsIgnoreCase("NATION")) return MessageRoute.NATION;
+        if (channelType.equalsIgnoreCase("GLOBAL")
+                && isConfiguredChannel(channelName, "townychat.GlobalChannelNames")) return MessageRoute.GLOBAL;
+        return MessageRoute.IGNORE;
+    }
+
+    /** True only for the exact TownyChat message that DiscordSRV must not copy globally. */
+    public boolean shouldSuppressGlobalCopy(Event triggeringEvent, Player player, String message) {
+        if (!townyChatHookActive || player == null) return false;
+        MessageRoute route = triggeringEvent == null ? null : routesByEvent.get(triggeringEvent);
+        if (route == null) {
+            RoutedMessage latest = latestRoutes.get(player.getUniqueId());
+            long maximumAge = java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+            if (latest != null && System.nanoTime() - latest.createdAt() <= maximumAge
+                    && latest.message().equals(message)) route = latest.route();
+        }
+        return route != null && route != MessageRoute.GLOBAL;
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event) {
+        if (townyChatHookActive) return;
         String text = PlainTextComponentSerializer.plainText().serialize(event.message());
         if (text.isBlank()) return;
         java.util.UUID playerId = event.getPlayer().getUniqueId();
