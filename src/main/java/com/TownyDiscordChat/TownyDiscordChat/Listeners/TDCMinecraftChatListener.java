@@ -27,6 +27,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -73,12 +76,28 @@ public final class TDCMinecraftChatListener implements Listener {
         }
     }
 
-    private void enableTownyChatHookEvents(Plugin townyChat) throws ReflectiveOperationException {
-        Object holder = townyChat.getClass().getMethod("getChannelsHandler").invoke(townyChat);
-        Object value = holder.getClass().getMethod("getAllChannels").invoke(holder);
+    private void enableTownyChatHookEvents(Plugin townyChat) throws Throwable {
+        ClassLoader loader = townyChat.getClass().getClassLoader();
+        Class<?> chatClass = Class.forName("com.palmergames.bukkit.TownyChat.Chat", false, loader);
+        Class<?> holderClass = Class.forName("com.palmergames.bukkit.TownyChat.channels.ChannelsHolder", false, loader);
+        Class<?> channelClass = Class.forName("com.palmergames.bukkit.TownyChat.channels.Channel", false, loader);
+        MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+
+        // MethodHandles resolve only the requested signatures. Calling
+        // Class#getMethod on TownyChat.Chat enumerates public methods and tries
+        // to load the optional Essentials return type, causing NoClassDefFoundError.
+        MethodHandle getChannelsHandler = lookup.findVirtual(chatClass, "getChannelsHandler",
+                MethodType.methodType(holderClass));
+        MethodHandle getAllChannels = lookup.findVirtual(holderClass, "getAllChannels",
+                MethodType.methodType(Map.class));
+        MethodHandle setHooked = lookup.findVirtual(channelClass, "setHooked",
+                MethodType.methodType(void.class, boolean.class));
+
+        Object holder = getChannelsHandler.invoke(townyChat);
+        Object value = getAllChannels.invoke(holder);
         if (!(value instanceof Map<?, ?> channels)) return;
         for (Object channel : channels.values()) {
-            if (channel != null) channel.getClass().getMethod("setHooked", boolean.class).invoke(channel, true);
+            if (channel != null) setHooked.invoke(channel, true);
         }
     }
 
