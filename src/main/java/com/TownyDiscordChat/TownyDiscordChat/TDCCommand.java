@@ -107,12 +107,10 @@ public final class TDCCommand implements CommandExecutor {
                 TDCMessages.send(sender, plugin, TDCMessages.tr(plugin, "commands.no_permission"));
                 return true;
             }
-            if (!plugin.manager().isLinked(player.getUniqueId())) {
-                TDCMessages.send(player, plugin, "&cCollega prima Discord con &f/discord link&c.");
-                return true;
-            }
-            plugin.manager().synchronisePlayer(player.getUniqueId());
-            TDCMessages.send(player, plugin, "&7Verifica dei ruoli avviata.");
+            plugin.manager().synchronisePlayer(player.getUniqueId(), linked -> {
+                if (linked) TDCMessages.send(player, plugin, "&7Verifica dei ruoli completata.");
+                else TDCMessages.send(player, plugin, "&cCollega prima Discord con &f/discord link&c.");
+            });
             return true;
         }
 

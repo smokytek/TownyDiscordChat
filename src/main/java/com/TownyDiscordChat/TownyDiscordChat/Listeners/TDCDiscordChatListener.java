@@ -37,8 +37,8 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
         if (message.isBlank()) return;
         String cleanAuthor = author;
         String cleanMessage = message;
-        plugin.getServer().getScheduler().runTask(plugin,
-                () -> plugin.manager().relayDiscordMessage(discordId, channelId, cleanAuthor, cleanMessage));
+        plugin.manager().resolveLinkedPlayer(discordId,
+                playerId -> plugin.manager().relayDiscordMessage(playerId, channelId, cleanAuthor, cleanMessage));
     }
 
     /** Removes emoji code points and invisible Discord direction/variation markers unsupported by Minecraft's font. */
@@ -91,8 +91,8 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
         boolean townButtonAdministrator = isTownButtonAdministrator(event);
 
         if (event.getMessage().isEphemeral()) {
-            event.deferEdit().queue(hook -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-                var response = plugin.manager().townButtonResponse(discordId, channelId, townName, action, page, townButtonAdministrator);
+            event.deferEdit().queue(hook -> plugin.manager().resolveLinkedPlayer(discordId, playerId -> {
+                var response = plugin.manager().townButtonResponse(playerId, channelId, townName, action, page, townButtonAdministrator);
                 if (response.error() != null) {
                     hook.editOriginal(response.error()).setEmbeds(java.util.Collections.emptyList())
                             .setActionRows(java.util.Collections.emptyList()).queue();
@@ -101,8 +101,8 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
                 }
             }));
         } else {
-            event.deferReply(true).queue(hook -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-                var response = plugin.manager().townButtonResponse(discordId, channelId, townName, action, page, townButtonAdministrator);
+            event.deferReply(true).queue(hook -> plugin.manager().resolveLinkedPlayer(discordId, playerId -> {
+                var response = plugin.manager().townButtonResponse(playerId, channelId, townName, action, page, townButtonAdministrator);
                 if (response.error() != null) {
                     hook.editOriginal(response.error()).queue();
                 } else {
@@ -136,8 +136,8 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
         boolean administrator = event.getMember() != null && event.getMember().hasPermission(github.scarsz.discordsrv.dependencies.jda.api.Permission.ADMINISTRATOR);
         if (subcommand.equals("map")) {
             String town = event.getOption("citta") == null ? null : event.getOption("citta").getAsString();
-            event.deferReply(false).queue(hook -> plugin.getServer().getScheduler().runTask(plugin,
-                    () -> plugin.manager().requestTownDynmapMap(event.getUser().getId(), town, administrator, result -> {
+            event.deferReply(false).queue(hook -> plugin.manager().resolveLinkedPlayer(event.getUser().getId(), playerId ->
+                    plugin.manager().requestTownDynmapMap(playerId, town, administrator, result -> {
                         if (!result.successful()) {
                             hook.editOriginal(result.error()).queue();
                             return;
@@ -156,13 +156,13 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
                                     } catch (Exception ignoredDelete) {
                                         // The temporary map can safely be cleaned on a later request.
                                     }
-                                });
+                        });
                         hook.editOriginal("✅ Mappa Dynmap inviata nel canale.").queue();
                     })));
             return;
         }
-        event.deferReply(true).queue(hook -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-            String response = plugin.manager().handleTownSlashCommand(event.getUser().getId(), subcommand, message, administrator);
+        event.deferReply(true).queue(hook -> plugin.manager().resolveLinkedPlayer(event.getUser().getId(), playerId -> {
+            String response = plugin.manager().handleTownSlashCommand(playerId, subcommand, message, administrator);
             hook.editOriginal(response).queue();
         }));
     }

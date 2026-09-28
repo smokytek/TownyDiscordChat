@@ -87,6 +87,11 @@ townychat:
     SoundVolume: 1.0
     SoundPitch: 1.0
 
+# Limits expensive full synchronisations to small chunks per server tick.
+performance:
+  ResourceSyncBatchSize: 10
+  LinkedAccountBatchSize: 25
+
 discord:
   SlashCommands:
     Enabled: true

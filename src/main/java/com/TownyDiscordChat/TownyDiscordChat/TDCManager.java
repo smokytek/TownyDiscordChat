@@ -49,6 +49,7 @@ import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Keeps Towny membership, Discord resources and the two chat directions consistent. */
 public final class TDCManager {
@@ -59,26 +60,51 @@ public final class TDCManager {
     private final Map<String, CompletableFuture<Role>> pendingRoles = new ConcurrentHashMap<>();
     private final Map<String, CompletableFuture<TextChannel>> pendingChannels = new ConcurrentHashMap<>();
     private final Map<String, Integer> lastTownFallVariant = new ConcurrentHashMap<>();
+    private final Map<String, Long> unlinkedDiscordUsers = new ConcurrentHashMap<>();
+    private final AtomicBoolean resourceSyncRunning = new AtomicBoolean();
+    private final AtomicBoolean linkedSyncRunning = new AtomicBoolean();
 
     public TDCManager(Main plugin) {
         this.plugin = plugin;
     }
 
     public boolean isLinked(UUID playerId) {
-        return DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerId) != null;
+        return DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdFromCache(playerId) != null;
     }
 
     public void synchroniseAllResources() {
-        for (Town town : new ArrayList<>(TownyUniverse.getInstance().getTowns())) {
-            ensureTownResources(town);
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(plugin, this::synchroniseAllResources);
+            return;
         }
-        for (Nation nation : new ArrayList<>(TownyUniverse.getInstance().getNations())) {
-            ensureNationResources(nation);
+        if (!resourceSyncRunning.compareAndSet(false, true)) return;
+        synchroniseResourceBatch(new ArrayList<>(TownyUniverse.getInstance().getTowns()),
+                new ArrayList<>(TownyUniverse.getInstance().getNations()), 0);
+    }
+
+    private void synchroniseResourceBatch(List<Town> towns, List<Nation> nations, int offset) {
+        if (!plugin.isEnabled()) {
+            resourceSyncRunning.set(false);
+            return;
         }
-        // Remove channels left behind by deleted/renamed Towny objects. This is
-        // deliberately limited to channels carrying a TownyDiscordChat role
-        // permission, so unrelated Discord channels are never touched.
-        cleanupObsoleteManagedChannels();
+        int total = towns.size() + nations.size();
+        int batchSize = Math.max(1, plugin.configuration().getInt("performance.ResourceSyncBatchSize", 10));
+        int end = Math.min(offset + batchSize, total);
+        try {
+            for (int index = offset; index < end; index++) {
+                if (index < towns.size()) ensureTownResources(towns.get(index));
+                else ensureNationResources(nations.get(index - towns.size()));
+            }
+            if (end < total) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> synchroniseResourceBatch(towns, nations, end), 1L);
+            } else {
+                cleanupObsoleteManagedChannels();
+                resourceSyncRunning.set(false);
+            }
+        } catch (RuntimeException error) {
+            resourceSyncRunning.set(false);
+            warn("Could not complete the batched resource synchronisation", error);
+        }
     }
 
     /** Deletes managed town/nation channels whose names no longer exist in Towny. */
@@ -121,20 +147,91 @@ public final class TDCManager {
     }
 
     public void synchroniseAllLinkedAccounts() {
-        Map<String, UUID> linked = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts();
-        linked.forEach((discordId, playerId) -> synchronisePlayer(discordId, playerId));
+        if (!linkedSyncRunning.compareAndSet(false, true)) return;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                Map<String, UUID> linked = new LinkedHashMap<>(DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts());
+                List<Map.Entry<String, UUID>> entries = new ArrayList<>(linked.entrySet());
+                if (plugin.isEnabled()) Bukkit.getScheduler().runTask(plugin, () -> synchroniseLinkedBatch(entries, 0));
+                else linkedSyncRunning.set(false);
+            } catch (RuntimeException error) {
+                linkedSyncRunning.set(false);
+                warn("Could not load linked Discord accounts", error);
+            }
+        });
+    }
+
+    private void synchroniseLinkedBatch(List<Map.Entry<String, UUID>> entries, int offset) {
+        if (!plugin.isEnabled()) {
+            linkedSyncRunning.set(false);
+            return;
+        }
+        if (offset >= entries.size()) {
+            linkedSyncRunning.set(false);
+            return;
+        }
+        int batchSize = Math.max(1, plugin.configuration().getInt("performance.LinkedAccountBatchSize", 25));
+        int end = Math.min(offset + batchSize, entries.size());
+        for (int index = offset; index < end; index++) {
+            Map.Entry<String, UUID> entry = entries.get(index);
+            synchronisePlayer(entry.getKey(), entry.getValue());
+        }
+        if (end < entries.size()) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> synchroniseLinkedBatch(entries, end), 1L);
+        } else linkedSyncRunning.set(false);
     }
 
     public void synchronisePlayer(UUID playerId) {
-        String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerId);
-        if (discordId == null) {
+        synchronisePlayer(playerId, null);
+    }
+
+    public void synchronisePlayer(UUID playerId, Consumer<Boolean> callback) {
+        String cached = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdFromCache(playerId);
+        if (cached != null) {
+            synchronisePlayer(cached, playerId);
+            if (callback != null) callback.accept(true);
             return;
         }
-        synchronisePlayer(discordId, playerId);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerId);
+            if (plugin.isEnabled()) Bukkit.getScheduler().runTask(plugin, () -> {
+                if (discordId != null) synchronisePlayer(discordId, playerId);
+                if (callback != null) callback.accept(discordId != null);
+            });
+        });
+    }
+
+    /** Resolves a Discord link off-thread and returns to Bukkit's main thread. */
+    public void resolveLinkedPlayer(String discordId, Consumer<UUID> callback) {
+        UUID cached = DiscordSRV.getPlugin().getAccountLinkManager().getUuidFromCache(discordId);
+        if (cached != null) {
+            unlinkedDiscordUsers.remove(discordId);
+            if (Bukkit.isPrimaryThread()) callback.accept(cached);
+            else Bukkit.getScheduler().runTask(plugin, () -> callback.accept(cached));
+            return;
+        }
+        long now = System.nanoTime();
+        long negativeCacheNanos = java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+        Long lastUnlinked = unlinkedDiscordUsers.get(discordId);
+        if (lastUnlinked != null && now - lastUnlinked < negativeCacheNanos) {
+            if (Bukkit.isPrimaryThread()) callback.accept(null);
+            else Bukkit.getScheduler().runTask(plugin, () -> callback.accept(null));
+            return;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(discordId);
+            if (playerId == null) unlinkedDiscordUsers.put(discordId, System.nanoTime());
+            else unlinkedDiscordUsers.remove(discordId);
+            if (plugin.isEnabled()) Bukkit.getScheduler().runTask(plugin, () -> callback.accept(playerId));
+        });
     }
 
     /** Removes every obsolete managed role and adds precisely the player's current town/nation roles. */
     public void synchronisePlayer(String discordId, UUID playerId) {
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(plugin, () -> synchronisePlayer(discordId, playerId));
+            return;
+        }
         Guild guild = guild();
         if (guild == null) {
             return;
@@ -426,8 +523,7 @@ public final class TDCManager {
     }
 
     /** Runs on Bukkit's main thread after a slash-command interaction has been deferred. */
-    public String handleTownSlashCommand(String discordId, String subcommand, String message, boolean discordAdministrator) {
-        UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts().get(discordId);
+    public String handleTownSlashCommand(UUID playerId, String subcommand, String message, boolean discordAdministrator) {
         if (subcommand.equals("resync")) {
             if (!discordAdministrator) return "❌ Questo comando richiede il permesso Discord **Administrator**.";
             synchroniseAllResources();
@@ -462,13 +558,12 @@ public final class TDCManager {
      * intentionally accessed through reflection so an absent or updated Dynmap
      * installation can never prevent this plugin from starting.
      */
-    public void requestTownDynmapMap(String discordId, String requestedTown, boolean discordAdministrator,
+    public void requestTownDynmapMap(UUID playerId, String requestedTown, boolean discordAdministrator,
                                      Consumer<DynmapTownMapRenderer.Result> callback) {
         if (!plugin.configuration().getBoolean("dynmap.Enabled", false)) {
             callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.map_disabled")));
             return;
         }
-        UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts().get(discordId);
         if (playerId == null) {
             callback.accept(DynmapTownMapRenderer.Result.error(TDCMessages.tr(plugin, "commands.link_required")));
             return;
@@ -588,7 +683,7 @@ public final class TDCManager {
     }
 
     /** Called on the Bukkit thread after a Discord message arrives. */
-    public void relayDiscordMessage(String discordId, String channelId, String displayName, String message) {
+    public void relayDiscordMessage(UUID playerId, String channelId, String displayName, String message) {
         if (!bridgeEnabled("DiscordToMinecraft")) {
             return;
         }
@@ -599,7 +694,6 @@ public final class TDCManager {
         }
         if (town != null && !isTownFeatureEnabled(town, "chat")) return;
 
-        UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts().get(discordId);
         boolean mustBeLinked = plugin.configuration().getBoolean("bridge.RequireLinkedAccount", true);
         boolean mustBelongToTown = plugin.configuration().getBoolean("bridge.RequireCurrentTown", true);
         boolean belongs = town != null
@@ -634,7 +728,7 @@ public final class TDCManager {
     }
 
     /** Builds the private details shown by the buttons attached to the NewDay summary. */
-    public TownButtonResponse townButtonResponse(String discordId, String channelId, String townName,
+    public TownButtonResponse townButtonResponse(UUID playerId, String channelId, String townName,
                                                    String action, int page, boolean townButtonAdministrator) {
         Town town = TownyUniverse.getInstance().getTown(townName);
         if (town == null) return TownButtonResponse.error("La città non esiste più.");
@@ -643,7 +737,6 @@ public final class TDCManager {
             return TownButtonResponse.error("Questo pulsante può essere usato solo nel canale della città.");
         }
         if (!townButtonAdministrator) {
-            UUID playerId = DiscordSRV.getPlugin().getAccountLinkManager().getLinkedAccounts().get(discordId);
             Town currentTown = playerId == null ? null : townFor(playerId);
             if (currentTown == null || !currentTown.getName().equalsIgnoreCase(town.getName())) {
                 return TownButtonResponse.error("Il tuo account Minecraft collegato non appartiene più a questa città.");
