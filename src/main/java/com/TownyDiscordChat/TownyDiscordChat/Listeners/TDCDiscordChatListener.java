@@ -25,8 +25,12 @@ public final class TDCDiscordChatListener extends ListenerAdapter {
         if (!event.isFromGuild() || event.getAuthor().isBot() || event.getMessage().getContentRaw().isBlank()) {
             return;
         }
-        String discordId = event.getAuthor().getId();
         String channelId = event.getChannel().getId();
+        // Immediately drop messages from channels not managed by TownyDiscordChat
+        if (!plugin.manager().isManagedChatChannel(channelId)) {
+            return;
+        }
+        String discordId = event.getAuthor().getId();
         String author = event.getMember() == null ? event.getAuthor().getName() : event.getMember().getEffectiveName();
         // Resolve role/user/channel IDs such as <@&123> to their readable Discord names.
         String message = event.getMessage().getContentDisplay();

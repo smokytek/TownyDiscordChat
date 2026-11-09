@@ -4,6 +4,7 @@ import com.TownyDiscordChat.TownyDiscordChat.Main;
 import github.scarsz.discordsrv.api.Subscribe;
 import github.scarsz.discordsrv.api.ListenerPriority;
 import github.scarsz.discordsrv.api.events.AccountLinkedEvent;
+import github.scarsz.discordsrv.api.events.DiscordReadyEvent;
 import github.scarsz.discordsrv.api.events.GameChatMessagePreProcessEvent;
 
 /** Reconciles an account as soon as DiscordSRV completes its link flow. */
@@ -16,6 +17,15 @@ public final class TDCDiscordSRVListener {
     public TDCDiscordSRVListener(Main plugin, TDCMinecraftChatListener minecraftChatListener) {
         this.plugin = plugin;
         this.minecraftChatListener = minecraftChatListener;
+    }
+
+    @Subscribe
+    public void onDiscordReady(DiscordReadyEvent event) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            plugin.registerDiscordJdaFeatures();
+            plugin.manager().synchroniseAllResources();
+            plugin.manager().synchroniseAllLinkedAccounts();
+        });
     }
 
     @Subscribe

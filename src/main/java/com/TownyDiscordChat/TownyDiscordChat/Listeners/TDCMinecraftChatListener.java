@@ -81,6 +81,7 @@ public final class TDCMinecraftChatListener implements Listener {
         Class<?> chatClass = Class.forName("com.palmergames.bukkit.TownyChat.Chat", false, loader);
         Class<?> holderClass = Class.forName("com.palmergames.bukkit.TownyChat.channels.ChannelsHolder", false, loader);
         Class<?> channelClass = Class.forName("com.palmergames.bukkit.TownyChat.channels.Channel", false, loader);
+        Class<?> channelTypesClass = Class.forName("com.palmergames.bukkit.TownyChat.channels.channelTypes", false, loader);
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
 
         // MethodHandles resolve only the requested signatures. Calling
@@ -92,12 +93,28 @@ public final class TDCMinecraftChatListener implements Listener {
                 MethodType.methodType(Map.class));
         MethodHandle setHooked = lookup.findVirtual(channelClass, "setHooked",
                 MethodType.methodType(void.class, boolean.class));
+        MethodHandle getType = lookup.findVirtual(channelClass, "getType",
+                MethodType.methodType(channelTypesClass));
+        MethodHandle getName = lookup.findVirtual(channelClass, "getName",
+                MethodType.methodType(String.class));
 
         Object holder = getChannelsHandler.invoke(townyChat);
         Object value = getAllChannels.invoke(holder);
         if (!(value instanceof Map<?, ?> channels)) return;
         for (Object channel : channels.values()) {
-            if (channel != null) setHooked.invoke(channel, true);
+            if (channel == null) continue;
+            String channelType = String.valueOf(getType.invoke(channel));
+            String channelName = String.valueOf(getName.invoke(channel));
+            // Never hook GLOBAL channels so TownyDiscordChat never interferes with or alters global chat.
+            if (channelType.equalsIgnoreCase("GLOBAL") || isConfiguredChannel(channelName, "townychat.GlobalChannelNames")) {
+                continue;
+            }
+            if (channelType.equalsIgnoreCase("TOWN") || channelType.equalsIgnoreCase("NATION")
+                    || isConfiguredChannel(channelName, "townychat.TownChannelNames")
+                    || isConfiguredChannel(channelName, "townychat.NationChannelNames")
+                    || isConfiguredChannel(channelName, "townychat.LocalNoNearbyPlayersWarning.ChannelNames")) {
+                setHooked.invoke(channel, true);
+            }
         }
     }
 
@@ -138,10 +155,9 @@ public final class TDCMinecraftChatListener implements Listener {
     }
 
     private MessageRoute routeFor(String channelName, String channelType) {
-        if (channelType.equalsIgnoreCase("TOWN")) return MessageRoute.TOWN;
-        if (channelType.equalsIgnoreCase("NATION")) return MessageRoute.NATION;
-        if (channelType.equalsIgnoreCase("GLOBAL")
-                && isConfiguredChannel(channelName, "townychat.GlobalChannelNames")) return MessageRoute.GLOBAL;
+        if (channelType.equalsIgnoreCase("TOWN") || isConfiguredChannel(channelName, "townychat.TownChannelNames")) return MessageRoute.TOWN;
+        if (channelType.equalsIgnoreCase("NATION") || isConfiguredChannel(channelName, "townychat.NationChannelNames")) return MessageRoute.NATION;
+        if (channelType.equalsIgnoreCase("GLOBAL") || isConfiguredChannel(channelName, "townychat.GlobalChannelNames")) return MessageRoute.GLOBAL;
         return MessageRoute.IGNORE;
     }
 
@@ -155,7 +171,16 @@ public final class TDCMinecraftChatListener implements Listener {
             if (latest != null && System.nanoTime() - latest.createdAt() <= maximumAge
                     && latest.message().equals(message)) route = latest.route();
         }
-        return route != null && route != MessageRoute.GLOBAL;
+        if (route == null || route == MessageRoute.GLOBAL || route == MessageRoute.IGNORE) {
+            return false;
+        }
+        if (route == MessageRoute.TOWN) {
+            return true;
+        }
+        if (route == MessageRoute.NATION) {
+            return plugin.configuration().getBoolean("bridge.NationChatOnly", true);
+        }
+        return false;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -274,13 +299,19 @@ public final class TDCMinecraftChatListener implements Listener {
         }
         if (matchesCommand(command, "townychat.CommandListener.TownCommands")
                 || channelArgumentMatches(parts, "townychat.TownChannelNames")) {
-            channelHints.put(playerId, configuredPrimaryName("townychat.TownChannelNames", "town"));
+            if (parts.length == 1 || channelArgumentMatches(parts, "townychat.TownChannelNames")) {
+                channelHints.put(playerId, configuredPrimaryName("townychat.TownChannelNames", "town"));
+            }
         } else if (matchesCommand(command, "townychat.CommandListener.NationCommands")
                 || channelArgumentMatches(parts, "townychat.NationChannelNames")) {
-            channelHints.put(playerId, configuredPrimaryName("townychat.NationChannelNames", "nation"));
+            if (parts.length == 1 || channelArgumentMatches(parts, "townychat.NationChannelNames")) {
+                channelHints.put(playerId, configuredPrimaryName("townychat.NationChannelNames", "nation"));
+            }
         } else if (matchesCommand(command, "townychat.CommandListener.LocalCommands")
                 || channelArgumentMatches(parts, "townychat.LocalNoNearbyPlayersWarning.ChannelNames")) {
-            channelHints.put(playerId, configuredPrimaryName("townychat.LocalNoNearbyPlayersWarning.ChannelNames", "local"));
+            if (parts.length == 1 || channelArgumentMatches(parts, "townychat.LocalNoNearbyPlayersWarning.ChannelNames")) {
+                channelHints.put(playerId, configuredPrimaryName("townychat.LocalNoNearbyPlayersWarning.ChannelNames", "local"));
+            }
         } else if (matchesCommand(command, "townychat.CommandListener.OtherCommands")
                 || channelArgumentMatches(parts, "townychat.CommandListener.OtherCommands")) {
             channelHints.remove(playerId);
@@ -289,13 +320,15 @@ public final class TDCMinecraftChatListener implements Listener {
 
     private boolean isGlobalChatCommand(String command, String[] parts) {
         if (command.equals("g") || command.equals("gc") || command.equals("global")
-                || command.equals("globalchat") || command.equals("globalchannel")) return true;
+                || command.equals("globalchat") || command.equals("globalchannel")
+                || command.equals("globale") || matchesCommand(command, "townychat.GlobalChannelNames")) return true;
         if (!(command.equals("ch") || command.equals("channel") || command.equals("chat")
                 || command.equals("townychat"))) return false;
         if (parts.length < 2) return false;
         String argument = parts[1].toLowerCase(java.util.Locale.ROOT);
         return argument.equals("g") || argument.equals("gc") || argument.equals("global")
-                || argument.equals("globalchat") || argument.equals("globalchannel");
+                || argument.equals("globalchat") || argument.equals("globalchannel")
+                || argument.equals("globale") || channelArgumentMatches(parts, "townychat.GlobalChannelNames");
     }
 
     /** Supports channel-switch commands such as /ch town, /chat global and /channel local. */

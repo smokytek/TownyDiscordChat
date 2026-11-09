@@ -21,11 +21,16 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /** Optional, reflection-only Dynmap bridge. It downloads Dynmap's own rendered tiles, never world data. */
 public final class DynmapTownMapRenderer {
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
     private DynmapTownMapRenderer() {
     }
 
@@ -80,25 +85,34 @@ public final class DynmapTownMapRenderer {
         graphics.fillRect(0, 0, side, side);
         graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-        HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(timeout)).build();
-        int loaded = 0;
+        record TileTask(int drawX, int drawY, CompletableFuture<BufferedImage> future) {}
+        List<TileTask> tasks = new ArrayList<>(tilesPerSide * tilesPerSide);
         int half = tilesPerSide / 2;
         for (int row = 0; row < tilesPerSide; row++) {
             for (int column = 0; column < tilesPerSide; column++) {
                 int tileX = centerX + column - half;
                 int tileY = centerY + row - half;
-                BufferedImage tile = downloadTile(client, tileUrl(template, webUrl, request.world(), prefix, zoom, tileX, tileY), timeout);
+                String url = tileUrl(template, webUrl, request.world(), prefix, zoom, tileX, tileY);
                 int drawX = column * tileSize;
                 int drawY = row * tileSize;
-                if (tile != null) {
-                    graphics.drawImage(tile, drawX, drawY, tileSize, tileSize, null);
-                    loaded++;
-                } else {
-                    graphics.setColor(new Color(45, 52, 62));
-                    graphics.fillRect(drawX, drawY, tileSize, tileSize);
-                    graphics.setColor(new Color(65, 73, 85));
-                    graphics.drawRect(drawX, drawY, tileSize - 1, tileSize - 1);
-                }
+                tasks.add(new TileTask(drawX, drawY, CompletableFuture.supplyAsync(() -> downloadTile(HTTP_CLIENT, url, timeout))));
+            }
+        }
+        int loaded = 0;
+        for (TileTask task : tasks) {
+            BufferedImage tile = null;
+            try {
+                tile = task.future().join();
+            } catch (Exception ignored) {
+            }
+            if (tile != null) {
+                graphics.drawImage(tile, task.drawX(), task.drawY(), tileSize, tileSize, null);
+                loaded++;
+            } else {
+                graphics.setColor(new Color(45, 52, 62));
+                graphics.fillRect(task.drawX(), task.drawY(), tileSize, tileSize);
+                graphics.setColor(new Color(65, 73, 85));
+                graphics.drawRect(task.drawX(), task.drawY(), tileSize - 1, tileSize - 1);
             }
         }
         if (loaded == 0) {

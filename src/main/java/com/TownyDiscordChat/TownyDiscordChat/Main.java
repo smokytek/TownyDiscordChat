@@ -39,9 +39,7 @@ public final class Main extends JavaPlugin {
 
         discordSRVListener = new TDCDiscordSRVListener(this, minecraftChatListener);
         DiscordSRV.api.subscribe(discordSRVListener);
-        discordChatListener = new TDCDiscordChatListener(this);
-        DiscordSRV.getPlugin().getJda().addEventListener(discordChatListener);
-        manager.registerSlashCommands();
+        registerDiscordJdaFeatures();
 
         getServer().getScheduler().runTask(this, () -> {
             manager.synchroniseAllResources();
@@ -50,14 +48,23 @@ public final class Main extends JavaPlugin {
         getLogger().info("TownyDiscordChat " + getDescription().getVersion() + " enabled for Paper 1.21+/26+.");
     }
 
+    public void registerDiscordJdaFeatures() {
+        if (discordChatListener == null && DiscordSRV.getPlugin() != null && DiscordSRV.getPlugin().getJda() != null) {
+            discordChatListener = new TDCDiscordChatListener(this);
+            DiscordSRV.getPlugin().getJda().addEventListener(discordChatListener);
+            manager.registerSlashCommands();
+        }
+    }
+
     @Override
     public void onDisable() {
         if (discordSRVListener != null && DiscordSRV.api != null) {
             DiscordSRV.api.unsubscribe(discordSRVListener);
             discordSRVListener = null;
         }
-        if (discordChatListener != null && DiscordSRV.getPlugin() != null) {
+        if (discordChatListener != null && DiscordSRV.getPlugin() != null && DiscordSRV.getPlugin().getJda() != null) {
             DiscordSRV.getPlugin().getJda().removeEventListener(discordChatListener);
+            discordChatListener = null;
         }
         getLogger().info("TownyDiscordChat disabled.");
     }

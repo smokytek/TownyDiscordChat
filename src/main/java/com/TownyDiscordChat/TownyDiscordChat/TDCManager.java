@@ -61,6 +61,8 @@ public final class TDCManager {
     private final Map<String, CompletableFuture<TextChannel>> pendingChannels = new ConcurrentHashMap<>();
     private final Map<String, Integer> lastTownFallVariant = new ConcurrentHashMap<>();
     private final Map<String, Long> unlinkedDiscordUsers = new ConcurrentHashMap<>();
+    private final Map<String, String> channelToTownCache = new ConcurrentHashMap<>();
+    private final Map<String, String> channelToNationCache = new ConcurrentHashMap<>();
     private final AtomicBoolean resourceSyncRunning = new AtomicBoolean();
     private final AtomicBoolean linkedSyncRunning = new AtomicBoolean();
 
@@ -238,9 +240,20 @@ public final class TDCManager {
         }
         Member member = guild.getMemberById(discordId);
         if (member == null) {
+            guild.retrieveMemberById(discordId).queue(
+                    retrieved -> {
+                        if (plugin.isEnabled()) {
+                            Bukkit.getScheduler().runTask(plugin, () -> applyPlayerRoles(guild, retrieved, playerId));
+                        }
+                    },
+                    error -> { /* Member not found in guild */ }
+            );
             return;
         }
+        applyPlayerRoles(guild, member, playerId);
+    }
 
+    private void applyPlayerRoles(Guild guild, Member member, UUID playerId) {
         Set<String> expected = expectedRoleNames(playerId);
         for (Role role : member.getRoles()) {
             if (isManagedRole(role) && !expected.contains(normalise(role.getName()))) {
@@ -1102,29 +1115,85 @@ public final class TDCManager {
         guild.getTextChannelsByName(name, true).stream().filter(channel -> matchesCategory(channel.getParent(), categoryId)).forEach(channel -> channel.delete().queue());
     }
 
-    private Town townForPublicChannel(String channelId) {
+    /** Fast check to drop Discord messages from channels not managed by TownyDiscordChat. */
+    public boolean isManagedChatChannel(String channelId) {
+        if (channelToTownCache.containsKey(channelId) || channelToNationCache.containsKey(channelId)) {
+            return true;
+        }
+        Guild guild = guild();
+        if (guild == null) return false;
+        TextChannel channel = guild.getTextChannelById(channelId);
+        if (channel == null) return false;
+        Category parent = channel.getParent();
+        String parentId = parent == null ? null : parent.getId();
+        if (parentId == null) return false;
+        return parentId.equals(townTextCategoryId()) || parentId.equals(nationTextCategoryId());
+    }
+
+    public Town townForPublicChannel(String channelId) {
+        String cachedTown = channelToTownCache.get(channelId);
+        if (cachedTown != null) {
+            Town town = TownyUniverse.getInstance().getTown(cachedTown);
+            if (town != null) return town;
+            channelToTownCache.remove(channelId);
+        }
+        Guild guild = guild();
+        if (guild == null) return null;
+        TextChannel channel = guild.getTextChannelById(channelId);
+        if (channel == null || !matchesCategory(channel.getParent(), townTextCategoryId())) return null;
+
         for (Town town : TownyUniverse.getInstance().getTowns()) {
-            TextChannel channel = publicTextChannel(town.getName(), townTextCategoryId());
-            if (channel != null && channel.getId().equals(channelId)) {
+            if (isMatchingChannel(channel, town.getName())) {
+                channelToTownCache.put(channelId, town.getName());
                 return town;
             }
         }
         return null;
     }
 
-    private Nation nationForPublicChannel(String channelId) {
+    public Nation nationForPublicChannel(String channelId) {
+        String cachedNation = channelToNationCache.get(channelId);
+        if (cachedNation != null) {
+            Nation nation = TownyUniverse.getInstance().getNation(cachedNation);
+            if (nation != null) return nation;
+            channelToNationCache.remove(channelId);
+        }
+        Guild guild = guild();
+        if (guild == null) return null;
+        TextChannel channel = guild.getTextChannelById(channelId);
+        if (channel == null || !matchesCategory(channel.getParent(), nationTextCategoryId())) return null;
+
         for (Nation nation : TownyUniverse.getInstance().getNations()) {
-            TextChannel channel = publicTextChannel(nation.getName(), nationTextCategoryId());
-            if (channel != null && channel.getId().equals(channelId)) return nation;
+            if (isMatchingChannel(channel, nation.getName())) {
+                channelToNationCache.put(channelId, nation.getName());
+                return nation;
+            }
         }
         return null;
+    }
+
+    private boolean isMatchingChannel(TextChannel channel, String name) {
+        String channelName = channel.getName();
+        if (channelName.equalsIgnoreCase(name)) return true;
+        return channelName.equalsIgnoreCase(toDiscordChannelName(name));
+    }
+
+    private String toDiscordChannelName(String name) {
+        if (name == null) return "";
+        return name.toLowerCase(Locale.ROOT).replace(' ', '-').replace('_', '-');
     }
 
     private TextChannel publicTextChannel(String name, String categoryId) {
         Guild guild = guild();
         if (guild == null) return null;
-        return guild.getTextChannelsByName(name, true).stream()
-                .filter(channel -> matchesCategory(channel.getParent(), categoryId)).findFirst().orElse(null);
+        String discordName = toDiscordChannelName(name);
+        for (TextChannel channel : guild.getTextChannels()) {
+            if (!matchesCategory(channel.getParent(), categoryId)) continue;
+            if (channel.getName().equalsIgnoreCase(name) || channel.getName().equalsIgnoreCase(discordName)) {
+                return channel;
+            }
+        }
+        return null;
     }
 
     private Town townFor(UUID playerId) {
